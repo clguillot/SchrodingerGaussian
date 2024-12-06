@@ -91,7 +91,7 @@ function gaussian_approx(G_list::AbstractVector{<:GaussianWavePacket1D},
         # Creates a linesearch with an alphamax to avoid negative variance for the gaussians
         a = real(unpack_gaussian_parameter_z(X))
         a_dir = real(unpack_gaussian_parameter_z(d))
-        alphamax = max(2*typemin(T), (a_dir < 0) ? -a / (2*a_dir) : typemax(T))
+        alphamax = (a_dir < 0) ? -a / (2*a_dir) : typemax(T)
         ls = HagerZhang{T}(;alphamax=alphamax)
 
         fx = ϕ(zero(T))
