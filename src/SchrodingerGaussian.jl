@@ -1,5 +1,18 @@
 module SchrodingerGaussian
 
-greet() = print("Hello World!")
+using LinearAlgebra
+using BlockBandedMatrices
+using LineSearches
+using ForwardDiff
+using DiffResults
+using StaticArrays
+using HermiteWavePackets
 
-end # module SchrodingerGaussian
+include("utils.jl")
+include("block_tridiagonal_system.jl")
+
+export gaussian_approx
+
+include("gaussian_approx.jl/approx_solver.jl")
+
+end
