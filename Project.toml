@@ -1,0 +1,4 @@
+name = "SchrodingerGaussian"
+uuid = "4bd69aee-3e5c-4fbb-8ece-f48505c1b061"
+authors = ["Clement Guillot <clement.guillot@enpc.fr>"]
+version = "0.1.0"
