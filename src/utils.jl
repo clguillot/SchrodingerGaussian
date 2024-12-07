@@ -2,7 +2,7 @@
 # Returns the size of a vector needed to pack and unpack GaussianWavePacket1D
 const gaussian_param_size::Int = 6
 param_size(::GaussianWavePacket1D{Complex{T}, Complex{T}, T, T}) where T = 6
-param_size(::Type{<:GaussianWavePacket1D{Complex{T}, Complex{T}, T, T}}) where T = 6
+param_size(::Type{GaussianWavePacket1D{Complex{T}, Complex{T}, T, T}}) where T = 6
 
 #=
     Packing a GaussianWavePacket1D into an AbstractVector
