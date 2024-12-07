@@ -89,6 +89,7 @@ function gaussian_approx(G_list::AbstractVector{<:GaussianWavePacket1D},
         end
 
         # Creates a linesearch with an alphamax to avoid negative variance for the gaussians
+        # More precisely, the real part of the variance cannot be more than halved
         a = real(unpack_gaussian_parameter_z(X))
         a_dir = real(unpack_gaussian_parameter_z(d))
         alphamax = (a_dir < 0) ? -a / (2*a_dir) : typemax(T)
