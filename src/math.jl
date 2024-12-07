@@ -13,6 +13,17 @@ function Base.exp(x::Complex{Dual{T,V,N}}) where {T,V,N}
 end
 
 # Fix for https://github.com/JuliaDiff/ForwardDiff.jl/issues/514
+function Base.inv(x::Complex{Dual{T,V,N}}) where {T,V,N}
+    xx = complex(ForwardDiff.value(real(x)), ForwardDiff.value(imag(x)))
+    dx = complex.(ForwardDiff.partials(real(x)), ForwardDiff.partials(imag(x)))
+
+    invv = inv(xx)
+    dinvv = - dx * invv * invv
+    complex(Dual{T,V,N}(real(invv), ForwardDiff.Partials{N,V}(tuple(real(dinvv)...))),
+            Dual{T,V,N}(imag(invv), ForwardDiff.Partials{N,V}(tuple(imag(dinvv)...))))
+end
+
+# Fix for https://github.com/JuliaDiff/ForwardDiff.jl/issues/514
 function Base.sqrt(x::Complex{Dual{T,V,N}}) where {T,V,N}
     xx = complex(ForwardDiff.value(real(x)), ForwardDiff.value(imag(x)))
     dx = complex.(ForwardDiff.partials(real(x)), ForwardDiff.partials(imag(x)))
