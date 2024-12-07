@@ -234,8 +234,8 @@ uuid = "14197337-ba66-59df-a3e3-ca00e7dcff7a"
 version = "0.3.14"
 
 [[deps.HermiteWavePackets]]
-deps = ["DoubleFloats", "FastGaussQuadrature", "ForwardDiff", "LinearAlgebra", "SpecialFunctions", "StaticArrays"]
-git-tree-sha1 = "af28443425a4642266cb9ffb76fedb012aed7597"
+deps = ["DoubleFloats", "FastGaussQuadrature", "LinearAlgebra", "SpecialFunctions", "StaticArrays"]
+git-tree-sha1 = "8a87684919462dfedd5741d1b1a0fe28b4b2d5b8"
 repo-rev = "main"
 repo-url = "https://github.com/clguillot/HermiteWavePackets"
 uuid = "0c63080c-9546-48d9-913a-8575c4379365"
