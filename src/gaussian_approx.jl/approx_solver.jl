@@ -27,7 +27,7 @@ function gaussian_approx_gradient_and_metric!(∇::Vector{T}, A::Matrix{T},
     gaussian_approx_gradient!(∇, G_list, X, cfg.cfg_gradient)
 
     #Hessian
-    gaussian_approx_metric_topright_hessian!(A, X, cfg.cfg_metric)
+    gaussian_approx_metric_topright_hessian!(A, X, X, cfg.cfg_metric)
 
     return ∇, A
 end

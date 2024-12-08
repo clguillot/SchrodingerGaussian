@@ -30,8 +30,11 @@ function GaussianApproxMetricTRHessCFG(X::Vector{T}) where{T<:Real}
     return GaussianApproxMetricTRHessCFG(W, gradient_cfg, jacobian_cfg)
 end
 
-#Metric
-function gaussian_approx_metric_topright_hessian!(Htr::Matrix{T}, X::Vector{T}, cfg::GaussianApproxMetricTRHessCFG=GaussianApproxMetricTRHessCFG(X)) where{T<:Real}
+#=
+    Computes ∂ₓ₁∂ₓ₂E(X1, X2)
+    where E(x1, x2) = gaussian_approx_metric(x1, x2)
+=#
+function gaussian_approx_metric_topright_hessian!(Htr::Matrix{T}, X1::Vector{T}, X2::Vector|{T}, cfg::GaussianApproxMetricTRHessCFG=GaussianApproxMetricTRHessCFG(X)) where{T<:Real}
     if size(Htr) != (gaussian_param_size, gaussian_param_size)
         throw(DimensionMismatch("Htr must be a square matrix of size $(gaussian_param_size)x$(gaussian_param_size) but has size $(size(Htr))"))
     end
@@ -41,7 +44,7 @@ function gaussian_approx_metric_topright_hessian!(Htr::Matrix{T}, X::Vector{T}, 
 
     f(Y1, Y2) = gaussian_approx_metric(Y1, Y2, Val(false))
     ∇₁f!(∇, Y1, Y2) = ForwardDiff.gradient!(∇, Z -> f(Z, Y2), Y1, cfg.gradient_cfg, Val(false))
-    ForwardDiff.jacobian!(Htr, (∇, Z) -> ∇₁f!(∇, X, Z), cfg.W, 
-        X, cfg.jacobian_cfg, Val(false))
+    ForwardDiff.jacobian!(Htr, (∇, Z) -> ∇₁f!(∇, X1, Z), cfg.W, 
+        X2, cfg.jacobian_cfg, Val(false))
     return Htr
 end
