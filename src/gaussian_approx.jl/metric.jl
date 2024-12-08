@@ -2,7 +2,7 @@
 #=
     Returns real(dot_L2(G_X1, G_X2))
 =#
-function gaussian_approx_metric(X1::AbstractVector{T1}, X2::AbstractVector{T2}, ::Val{check_len}=Val(true)) where{T1<:Real, T2<:Real, check_len}
+@fastmath function gaussian_approx_metric(X1::AbstractVector{T1}, X2::AbstractVector{T2}, ::Val{check_len}=Val(true)) where{T1<:Real, T2<:Real, check_len}
     if check_len && (length(X1) != gaussian_param_size || length(X2) != gaussian_param_size)
         throw(DimensionMismatch("X1 and X2 must be vectors of size $gaussian_param_size"))
     end
