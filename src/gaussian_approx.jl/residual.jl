@@ -2,7 +2,7 @@
 #=
     Computes |G_X - ∑G_list[k]|^2 - |∑G_list[k]|^2
 =#
-@fastmath function gaussian_approx_residual(X::AbstractVector{T}, G_list::AbstractVector{<:GaussianWavePacket1D}, ::Val{check_len}=Val(true)) where{T<:Real, check_len}
+function gaussian_approx_residual(X::AbstractVector{T}, G_list::AbstractVector{<:GaussianWavePacket1D}, ::Val{check_len}=Val(true)) where{T<:Real, check_len}
     if check_len && length(X) != gaussian_param_size
         throw(DimensionMismatch("X must be a vector of size $gaussian_param_size"))
     end
@@ -20,7 +20,7 @@ end
 #=
     Computes -2<G_X, ∑G_list[k]>
 =#
-@fastmath function gaussian_approx_residual_linear_part(X::AbstractVector{T}, G_list::AbstractVector{<:GaussianWavePacket1D}, ::Val{check_len}=Val(true)) where{T<:Real, check_len}
+function gaussian_approx_residual_linear_part(X::AbstractVector{T}, G_list::AbstractVector{<:GaussianWavePacket1D}, ::Val{check_len}=Val(true)) where{T<:Real, check_len}
     
     if check_len && length(X) != gaussian_param_size
         throw(DimensionMismatch("X must be a vector of size $gaussian_param_size"))
@@ -33,7 +33,7 @@ end
 #=
     Returns |∑G_list[k]|^2
 =#
-@fastmath function gaussian_approx_residual_constant_part(G_list::AbstractVector{<:GaussianWavePacket1D})
+function gaussian_approx_residual_constant_part(G_list::AbstractVector{<:GaussianWavePacket1D})
     Lg = length(G_list)
 
     #Diagonal part

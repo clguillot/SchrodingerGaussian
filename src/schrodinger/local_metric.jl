@@ -13,7 +13,7 @@
         - F0, F1 are obtained by unpacking respectively X1[1:6] and X1[7:12]
         - G0, G1 are obtained by unpacking respectively X2[1:6] and X2[7:12]
 =#
-@fastmath function schrodinger_gaussian_metric(X1::AbstractVector{T1}, X2::AbstractVector{T2}, ::Val{check_len}=Val(true)) where{T1<:Real, T2<:Real, check_len}
+function schrodinger_gaussian_metric(X1::AbstractVector{T1}, X2::AbstractVector{T2}, ::Val{check_len}=Val(true)) where{T1<:Real, T2<:Real, check_len}
     
     if check_len && (length(X1) != 2*gaussian_param_size || length(X2) != 2*gaussian_param_size)
         throw(DimensionMismatch("The size of X1 and X2 must be equal to $(2*gaussian_param_size)"))
