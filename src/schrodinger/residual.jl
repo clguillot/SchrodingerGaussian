@@ -302,7 +302,7 @@ function schrodinger_gaussian_gradient_and_metric!(∇::AbstractVector{T}, A::Bl
             @views @. A[Block(l, k)] = α * fh'
         end
     end
-    @time @threads :static for k=1:Lt
+    for k=1:Lt
         for l=k:min(Lt,k+1)
             loc_metric(k, l)
         end

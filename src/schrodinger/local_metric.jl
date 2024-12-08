@@ -7,9 +7,9 @@
 
 #=
     Computes
-        h * ∫_(0,h) ds <i∂ₜ(ζ₀(s)F0 + ζ₁(s)F1), i∂ₜ(ζ₀(s)G0 + ζ₁(s)G1)>
+        ∫_(0,1) ds real(<i∂ₜζₖ(s)F, i∂ₜζₗ(s)G>)
     where
-        - ζ₀, ζ₁ are the 2 P1 finite element functions on (0,h)
+        - (ζₖ)ₖ are the P1 finite element functions on [0,1]
         - F0, F1 are obtained by unpacking respectively X1[1:6] and X1[7:12]
         - G0, G1 are obtained by unpacking respectively X2[1:6] and X2[7:12]
 =#
