@@ -149,7 +149,7 @@ function schrodinger_gaussian_gradient!(∇::AbstractVector{T},
     h = (b - a) / (Lt - 1)
 
     #PDE residual
-    function loc_hess_grad(k)
+    function loc_grad(k)
         #Recovers buffers
         kb = threadid()
         Y = cfg.Y[kb]
@@ -166,11 +166,11 @@ function schrodinger_gaussian_gradient!(∇::AbstractVector{T},
     end
     #Odd part
     @threads :static for k=1:2:Lt-1
-        loc_hess_grad(k)
+        loc_grad(k)
     end
     #Even part
     @threads :static for k=2:2:Lt-1
-        loc_hess_grad(k)
+        loc_grad(k)
     end
 
     #Initial condition
@@ -188,7 +188,8 @@ end
 =#
 
 mutable struct SchGaussianGradientAndMetricCFG{T}
-    Y0::Vector{T}
+    Yk::Vector{Vector{T}}
+    Yl::Vector{Vector{T}}
     Y::Vector{Vector{T}}
     fg0::Vector{T}
     fh0::Matrix{T}
@@ -196,20 +197,21 @@ mutable struct SchGaussianGradientAndMetricCFG{T}
     fh::Vector{Matrix{T}}
     cfg0::GaussianApproxGradientAndMetricCFG
     cfg_gradient::Vector{<:SchGaussianLocalGradientCFG}
-    cfg_metric::Vector{<:SchGaussianMetricTRHessCFG}
+    cfg_metric::Vector{<:GaussianApproxMetricTRHessCFG}
 end
 function SchGaussianGradientAndMetricCFG(::Type{T}) where{T<:Real}
     nt = Threads.nthreads()
-    Y0 = zeros(T, gaussian_param_size)
+    Yk = [zeros(T, gaussian_param_size) for _=1:nt]
+    Yl = [zeros(T, gaussian_param_size) for _=1:nt]
     Y = [zeros(T, 2*gaussian_param_size) for _=1:nt]
     fg0 = zeros(T, gaussian_param_size)
     fh0 = zeros(T, gaussian_param_size, gaussian_param_size)
     fg = [zeros(T, 2*gaussian_param_size) for _=1:nt]
-    fh = [zeros(T, 2*gaussian_param_size, 2*gaussian_param_size) for _=1:nt]
-    cfg0 = GaussianApproxGradientAndMetricCFG(Y0)
+    fh = [zeros(T, gaussian_param_size, gaussian_param_size) for _=1:nt]
+    cfg0 = GaussianApproxGradientAndMetricCFG(Yk[1])
     cfg_gradient = [SchGaussianLocalGradientCFG(Y[1]) for _=1:nt]
-    cfg_metric = [SchGaussianMetricTRHessCFG(Y[1]) for _=1:nt]
-    return SchGaussianGradientAndMetricCFG(Y0, Y, fg0, fh0, fg, fh, cfg0, cfg_gradient, cfg_metric)
+    cfg_metric = [GaussianApproxMetricTRHessCFG(Yk[1], Yl[1]) for _=1:nt]
+    return SchGaussianGradientAndMetricCFG(Yk, Yl, Y, fg0, fh0, fg, fh, cfg0, cfg_gradient, cfg_metric)
 end
 
 #=
@@ -240,46 +242,76 @@ function schrodinger_gaussian_gradient_and_metric!(∇::AbstractVector{T}, A::Bl
 
     h = (b - a) / (Lt - 1)
 
+    #=
+        Returns ∫_(a,b) dt ζₖ'(t)ζₗ'(t)
+    =#
+    function fe_factor(k, l)
+        if k==l==1 || k==l==Lt
+            return 1/h
+        elseif k==l
+            return 2/h
+        elseif abs(k - l) == 1
+            return -1/h
+        else
+            return 0/h
+        end
+    end
+
     #PDE residual
-    function loc_hess_grad(k)
+    function loc_grad(k)
         #Recovers buffers
         kb = threadid()
         Y = cfg.Y[kb]
         fg = cfg.fg[kb]
-        fh = cfg.fh[kb]
 
         t = a + (k-1)*h
-        @views copy!(Y, X[(k-1)*gaussian_param_size + 1 : (k+1)*gaussian_param_size])
+        @views Y .= X[(k-1)*gaussian_param_size + 1 : (k+1)*gaussian_param_size]
 
         #Gradient
         schrodinger_gaussian_local_residual_gradient!(fg, t, h, apply_op, Gop,
             (@view Gf[:, k]), (@view Gf[:, k+1]), (@view Gg[:, k]), (@view Gg[:, k+1]),
-            Y,
-            cfg.cfg_gradient[kb])
+            Y, cfg.cfg_gradient[kb])
         @. @views ∇[(k-1) * gaussian_param_size + 1 : (k+1) * gaussian_param_size] += (b - a) * fg
-
-        #Meric
-        schrodinger_gaussian_metric_topright_hessian!(fh, h, Y, cfg.cfg_metric[kb])
-        for i=1:2
-            for j=1:2
-                fhij = @view fh[(i-1)*gaussian_param_size + 1 : i*gaussian_param_size, (j-1)*gaussian_param_size + 1 : j*gaussian_param_size]
-                fhji = @view fh[(j-1)*gaussian_param_size + 1 : j*gaussian_param_size, (i-1)*gaussian_param_size + 1 : i*gaussian_param_size]
-                @. @views A[Block(k + (i-1), k + (j-1))] += ((b - a) / 2) * (fhij + fhji')
-            end
-        end
     end
     #Odd part
     @threads :static for k=1:2:Lt-1
-        loc_hess_grad(k)
+        loc_grad(k)
     end
     #Even part
     @threads :static for k=2:2:Lt-1
-        loc_hess_grad(k)
+        loc_grad(k)
+    end
+
+    #PDE residual
+    function loc_metric(k, l)
+        #Recovers buffers
+        kb = threadid()
+        Yk = cfg.Yk[kb]
+        Yl = cfg.Yl[kb]
+        fh = cfg.fh[kb]
+
+        @views Yk .= X[(k-1)*gaussian_param_size + 1 : k*gaussian_param_size]
+        @views Yl .= X[(l-1)*gaussian_param_size + 1 : l*gaussian_param_size]
+
+        gaussian_approx_metric_topright_hessian!(fh, Yk, Yl, cfg.cfg_metric[kb])
+        α = (b - a) * fe_factor(k, l)
+        if k==l
+            @views @. A[Block(k, k)] = α * (fh + fh') / 2
+        else
+            @views @. A[Block(k, l)] = α * fh
+            @views @. A[Block(l, k)] = α * fh'
+        end
+    end
+    @time @threads :static for k=1:Lt
+        for l=k:min(Lt,k+1)
+            loc_metric(k, l)
+        end
     end
 
     #Initial condition
-    @views copy!(cfg.Y0, X[1 : gaussian_param_size])
-    gaussian_approx_gradient_and_metric!(cfg.fg0, cfg.fh0, Ginit, cfg.Y0, cfg.cfg0)
+    Y0 = cfg.Yk[1]
+    @views copy!(Y0, X[1 : gaussian_param_size])
+    gaussian_approx_gradient_and_metric!(cfg.fg0, cfg.fh0, Ginit, Y0, cfg.cfg0)
     @. @views ∇[1 : gaussian_param_size] += cfg.fg0
     @. @views A[Block(1, 1)] += (cfg.fh0 + cfg.fh0') / 2
 

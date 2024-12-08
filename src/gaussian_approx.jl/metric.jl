@@ -41,8 +41,11 @@ function gaussian_approx_metric_topright_hessian!(Htr::Matrix{T}, X1::Vector{T},
     if size(Htr) != (gaussian_param_size, gaussian_param_size)
         throw(DimensionMismatch("Htr must be a square matrix of size $(gaussian_param_size)x$(gaussian_param_size) but has size $(size(Htr))"))
     end
-    if length(X) != gaussian_param_size
-        throw(DimensionMismatch("X must be a vector of size $gaussian_param_size but has size $(length(X))"))
+    if length(X1) != gaussian_param_size
+        throw(DimensionMismatch("X1 must be a vector of size $gaussian_param_size but has size $(length(X1))"))
+    end
+    if length(X2) != gaussian_param_size
+        throw(DimensionMismatch("X2 must be a vector of size $gaussian_param_size but has size $(length(X2))"))
     end
 
     f(Y1, Y2) = gaussian_approx_metric(Y1, Y2, Val(false))
