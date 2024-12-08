@@ -1,35 +1,44 @@
 import ForwardDiff
 import ForwardDiff: Dual
 
-# Fix for https://github.com/JuliaDiff/ForwardDiff.jl/issues/514
-function Base.exp(x::Complex{Dual{T,V,N}}) where {T,V,N}
-    xx = complex(ForwardDiff.value(real(x)), ForwardDiff.value(imag(x)))
-    dx = complex.(ForwardDiff.partials(real(x)), ForwardDiff.partials(imag(x)))
-
-    expv = exp(xx)
-    dexpv = expv * dx
-    complex(Dual{T,V,N}(real(expv), ForwardDiff.Partials{N,V}(tuple(real(dexpv)...))),
-            Dual{T,V,N}(imag(expv), ForwardDiff.Partials{N,V}(tuple(imag(dexpv)...))))
+# # Fix for https://github.com/JuliaDiff/ForwardDiff.jl/issues/514
+@inline function Base.exp(d::Complex{<:Dual{T}}) where T
+    FD = ForwardDiff
+    x = complex(FD.value(real(d)), FD.value(imag(d)))
+    val = exp(x)
+    deriv = val
+    re_deriv, im_deriv = reim(deriv)
+    re_partials = FD.partials(real(d))
+    im_partials = FD.partials(imag(d))
+    re_retval = FD.dual_definition_retval(Val{T}(), real(val), re_deriv, re_partials, -im_deriv, im_partials)
+    im_retval = FD.dual_definition_retval(Val{T}(), imag(val), im_deriv, re_partials, re_deriv, im_partials)
+    return complex(re_retval, im_retval)
 end
 
 # Fix for https://github.com/JuliaDiff/ForwardDiff.jl/issues/514
-function Base.inv(x::Complex{Dual{T,V,N}}) where {T,V,N}
-    xx = complex(ForwardDiff.value(real(x)), ForwardDiff.value(imag(x)))
-    dx = complex.(ForwardDiff.partials(real(x)), ForwardDiff.partials(imag(x)))
-
-    invv = inv(xx)
-    dinvv = - dx * invv * invv
-    complex(Dual{T,V,N}(real(invv), ForwardDiff.Partials{N,V}(tuple(real(dinvv)...))),
-            Dual{T,V,N}(imag(invv), ForwardDiff.Partials{N,V}(tuple(imag(dinvv)...))))
+@inline function Base.inv(d::Complex{<:Dual{T}}) where T
+    FD = ForwardDiff
+    x = complex(FD.value(real(d)), FD.value(imag(d)))
+    val = inv(x)
+    deriv = - val*val
+    re_deriv, im_deriv = reim(deriv)
+    re_partials = FD.partials(real(d))
+    im_partials = FD.partials(imag(d))
+    re_retval = FD.dual_definition_retval(Val{T}(), real(val), re_deriv, re_partials, -im_deriv, im_partials)
+    im_retval = FD.dual_definition_retval(Val{T}(), imag(val), im_deriv, re_partials, re_deriv, im_partials)
+    return complex(re_retval, im_retval)
 end
 
 # Fix for https://github.com/JuliaDiff/ForwardDiff.jl/issues/514
-function Base.sqrt(x::Complex{Dual{T,V,N}}) where {T,V,N}
-    xx = complex(ForwardDiff.value(real(x)), ForwardDiff.value(imag(x)))
-    dx = complex.(ForwardDiff.partials(real(x)), ForwardDiff.partials(imag(x)))
-
-    sqrtv = sqrt(xx)
-    dsqrtv = dx / (2 * sqrtv)
-    complex(Dual{T,V,N}(real(sqrtv), ForwardDiff.Partials{N,V}(tuple(real(dsqrtv)...))),
-            Dual{T,V,N}(imag(sqrtv), ForwardDiff.Partials{N,V}(tuple(imag(dsqrtv)...))))
+@inline function Base.sqrt(d::Complex{<:Dual{T}}) where T
+    FD = ForwardDiff
+    x = complex(FD.value(real(d)), FD.value(imag(d)))
+    val = sqrt(x)
+    deriv = inv(2*val)
+    re_deriv, im_deriv = reim(deriv)
+    re_partials = FD.partials(real(d))
+    im_partials = FD.partials(imag(d))
+    re_retval = FD.dual_definition_retval(Val{T}(), real(val), re_deriv, re_partials, -im_deriv, im_partials)
+    im_retval = FD.dual_definition_retval(Val{T}(), imag(val), im_deriv, re_partials, re_deriv, im_partials)
+    return complex(re_retval, im_retval)
 end
