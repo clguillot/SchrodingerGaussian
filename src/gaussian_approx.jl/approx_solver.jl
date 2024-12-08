@@ -7,7 +7,7 @@ mutable struct GaussianApproxGradientAndMetricCFG
 end
 function GaussianApproxGradientAndMetricCFG(X::Vector{T}) where{T<:Real}
     cfg_gradient = GaussianApproxGradientCFG(X)
-    cfg_metric = GaussianApproxMetricTRHessCFG(X)
+    cfg_metric = GaussianApproxMetricTRHessCFG(X, X)
     return GaussianApproxGradientAndMetricCFG(cfg_gradient, cfg_metric)
 end
 

@@ -19,14 +19,17 @@ mutable struct GaussianApproxMetricTRHessCFG{T}
     gradient_cfg::ForwardDiff.GradientConfig
     jacobian_cfg::ForwardDiff.JacobianConfig
 end
-function GaussianApproxMetricTRHessCFG(X::Vector{T}) where{T<:Real}
-    if length(X) != gaussian_param_size
-        throw(DimensionMismatch("X must be a vector of size $gaussian_param_size but has size $(length(X))"))
+function GaussianApproxMetricTRHessCFG(X1::Vector{T}, X2::Vector{T}) where{T<:Real}
+    if length(X1) != gaussian_param_size
+        throw(DimensionMismatch("X1 must be a vector of size $gaussian_param_size but has size $(length(X1))"))
+    end
+    if length(X2) != gaussian_param_size
+        throw(DimensionMismatch("X2 must be a vector of size $gaussian_param_size but has size $(length(X2))"))
     end
     
     W = zeros(T, gaussian_param_size)
-    jacobian_cfg = ForwardDiff.JacobianConfig(x -> nothing, W, X, ForwardDiff.Chunk(gaussian_param_size))
-    gradient_cfg = ForwardDiff.GradientConfig(jacobian_cfg, X, ForwardDiff.Chunk(gaussian_param_size))
+    jacobian_cfg = ForwardDiff.JacobianConfig(x -> nothing, W, X1, ForwardDiff.Chunk(gaussian_param_size))
+    gradient_cfg = ForwardDiff.GradientConfig(jacobian_cfg, X2, ForwardDiff.Chunk(gaussian_param_size))
     return GaussianApproxMetricTRHessCFG(W, gradient_cfg, jacobian_cfg)
 end
 
@@ -34,7 +37,7 @@ end
     Computes ∂ₓ₁∂ₓ₂E(X1, X2)
     where E(x1, x2) = gaussian_approx_metric(x1, x2)
 =#
-function gaussian_approx_metric_topright_hessian!(Htr::Matrix{T}, X1::Vector{T}, X2::Vector|{T}, cfg::GaussianApproxMetricTRHessCFG=GaussianApproxMetricTRHessCFG(X)) where{T<:Real}
+function gaussian_approx_metric_topright_hessian!(Htr::Matrix{T}, X1::Vector{T}, X2::Vector{T}, cfg::GaussianApproxMetricTRHessCFG=GaussianApproxMetricTRHessCFG(X1, X2)) where{T<:Real}
     if size(Htr) != (gaussian_param_size, gaussian_param_size)
         throw(DimensionMismatch("Htr must be a square matrix of size $(gaussian_param_size)x$(gaussian_param_size) but has size $(size(Htr))"))
     end
