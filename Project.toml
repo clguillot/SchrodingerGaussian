@@ -4,6 +4,7 @@ authors = ["Clement Guillot <clement.guillot@enpc.fr>"]
 version = "0.1.0"
 
 [deps]
+BlockArrays = "8e7c35d0-a365-5155-bbbb-fb81a777f24e"
 BlockBandedMatrices = "ffab5731-97b5-5995-9138-79e8c1846df0"
 DiffResults = "163ba53b-c6d8-5494-b064-1a9d43ac40c5"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
@@ -13,6 +14,7 @@ LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
+BlockArrays = "1.3.0"
 BlockBandedMatrices = "0.13.3"
 DiffResults = "1.1.0"
 ForwardDiff = "0.10.38"
