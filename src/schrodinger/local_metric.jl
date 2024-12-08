@@ -7,7 +7,7 @@
 
 #=
     Computes
-        ∫_(0,h) ds <i∂ₜ(ζ₀(s)F0 + ζ₁(s)F1), i∂ₜ(ζ₀(s)G0 + ζ₁(s)G1)>
+        h * ∫_(0,h) ds <i∂ₜ(ζ₀(s)F0 + ζ₁(s)F1), i∂ₜ(ζ₀(s)G0 + ζ₁(s)G1)>
     where
         - ζ₀, ζ₁ are the 2 P1 finite element functions on (0,h)
         - F0, F1 are obtained by unpacking respectively X1[1:6] and X1[7:12]
@@ -46,8 +46,8 @@ function SchGaussianMetricTRHessCFG(X::Vector{T}) where{T<:Real}
     end
 
     W = zeros(T, 2*gaussian_param_size)
-    jacobian_cfg = ForwardDiff.JacobianConfig(x -> nothing, W, X, ForwardDiff.Chunk(2*gaussian_param_size))
-    gradient_cfg = ForwardDiff.GradientConfig(jacobian_cfg, X, ForwardDiff.Chunk(2*gaussian_param_size))
+    jacobian_cfg = ForwardDiff.JacobianConfig(x -> nothing, W, X, ForwardDiff.Chunk(gaussian_param_size))
+    gradient_cfg = ForwardDiff.GradientConfig(jacobian_cfg, X, ForwardDiff.Chunk(gaussian_param_size))
     return SchGaussianMetricTRHessCFG(W, gradient_cfg, jacobian_cfg)
 end
 
