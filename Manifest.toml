@@ -2,7 +2,7 @@
 
 julia_version = "1.11.1"
 manifest_format = "2.0"
-project_hash = "da9aecf865741f2d5fbc5bb3580ef6a748c6a1f7"
+project_hash = "bcd1e5e36aa50c0061ffbf1c43f86640c5a433f0"
 
 [[deps.Adapt]]
 deps = ["LinearAlgebra", "Requires"]
@@ -235,7 +235,7 @@ version = "0.3.14"
 
 [[deps.HermiteWavePackets]]
 deps = ["DoubleFloats", "FastGaussQuadrature", "LinearAlgebra", "SpecialFunctions", "StaticArrays"]
-git-tree-sha1 = "74e378c98730cf01478d7de6aac8dd7295a86bda"
+git-tree-sha1 = "e16fc4b05de2a50be4d1739935c6c18db223760a"
 repo-rev = "main"
 repo-url = "https://github.com/clguillot/HermiteWavePackets"
 uuid = "0c63080c-9546-48d9-913a-8575c4379365"
@@ -536,6 +536,12 @@ version = "1.0.2"
 [[deps.Unicode]]
 uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
 version = "1.11.0"
+
+[[deps.Unrolled]]
+deps = ["MacroTools"]
+git-tree-sha1 = "6cc9d682755680e0f0be87c56392b7651efc2c7b"
+uuid = "9602ed7d-8fef-5bc8-8597-8f21381861e8"
+version = "0.1.5"
 
 [[deps.Zlib_jll]]
 deps = ["Libdl"]

@@ -6,6 +6,7 @@ using LinearAlgebra
 using StaticArrays
 using BlockArrays
 using BlockBandedMatrices
+using Unrolled
 
 using LineSearches
 using ForwardDiff
