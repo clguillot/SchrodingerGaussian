@@ -1,4 +1,64 @@
+#=
+    Finite element factors
+=#
 
+#=
+    Returns
+        ∫dt ζₖ(t)ζₗ(t)
+    where the (ζₖ)ₖ are the P1 finite elements such that ζₖ(lh)=δₖₗ
+=#
+@inline function fe_m_factor(h::Real, k::Int, l::Int)
+    if k == l
+        return 2*h/3
+    elseif abs(k-l) == 1
+        return h/6
+    else
+        return zero(h)
+    end
+end
+
+#=
+    Returns
+        ∫dt ζₖ'(t)ζₗ'(t)
+    where the (ζₖ)ₖ are the P1 finite elements such that ζₖ(lh)=δₖₗ
+=#
+@inline function fe_k_factor(h::Real, k::Int, l::Int)
+    if k == l
+        return 2/h
+    elseif abs(k-l) == 1
+        return -1/h
+    else
+        return zero(1/h)
+    end
+end
+
+#=
+    Returns
+        ∫dt ζₖ'(t)ζₗ(t)
+    where the (ζₖ)ₖ are the P1 finite elements such that ζₖ(lh)=δₖₗ
+=#
+@inline function fe_l_factor(h::T, k::Int, l::Int) where{T<:Real}
+    if l == k+1
+        return T(-1/2)
+    elseif l == k-1
+        return T(1/2)
+    else
+        return T(0)
+    end
+end
+
+#=
+    Returns
+        ∫₍₀,ₕ₎ dt ζ₀'(t)ζ₀(t)
+    where the (ζₖ)ₖ are the P1 finite elements such that ζₖ(lh)=δₖₗ
+=#
+@inline function fe_l_half_factor(h::T) where{T<:Real}
+    return T(-1/2)
+end
+
+#=
+    Gaussian packing and unpacking
+=#
 # Returns the size of a vector needed to pack and unpack GaussianWavePacket1D
 const gaussian_param_size::Int = 6
 param_size(::GaussianWavePacket1D{Complex{T}, Complex{T}, T, T}) where T = 6

@@ -155,8 +155,8 @@ function SchBestGaussianCFG(::Type{T}, Lt::Int) where{T<:Real}
     d = similar(X)  #Descent direction
     A = BlockBandedMatrix(Diagonal(zeros(T, Lt * gaussian_param_size)), #Buffer for the metric
         fill(gaussian_param_size, Lt), fill(gaussian_param_size, Lt), (1,1))
-    cfg_gradient = SchGaussianGradientCFG(U)
-    cfg_metric = SchGaussianGradientAndMetricCFG(T)
+    cfg_gradient = SchGaussianGradientCFG(Lt, U)
+    cfg_metric = SchGaussianGradientAndMetricCFG(Lt, X)
     cfg_cholesky = BlockCholeskyStaticConfig(∇, Val(gaussian_param_size))
     return SchBestGaussianCFG(X, U, ∇, d, A, cfg_gradient, cfg_metric, cfg_cholesky)
 end

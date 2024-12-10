@@ -9,9 +9,14 @@ function gaussian_approx_residual(X::AbstractVector{T}, G_list::AbstractVector{<
 
     G = unpack_gaussian_parameters(X)
 
-    N = real(dot_L2(G, G))
-    for k in eachindex(G_list)
-        N -= 2 * real(dot_L2(G, G_list[k]))
+    N = zero(real(promote_type(eltype(G), eltype(eltype(G_list)))))
+
+    # Quadratic part
+    N += real(dot_L2(G, G))
+
+    # Linear part
+    for g in G_list
+        N -= 2 * real(dot_L2(g, G))
     end
 
     return N
@@ -27,6 +32,13 @@ function gaussian_approx_residual_linear_part(X::AbstractVector{T}, G_list::Abst
     end
 
     G = unpack_gaussian_parameters(X)
+
+    N = zero(real(promote_type(eltype(G), eltype(eltype(G_list)))))
+    
+    for g in G_list
+        N -= 2 * real(dot_L2(g, G))
+    end
+
     return -2 * sum(real(dot_L2(G, gk)) for gk in G_list)
 end
 
