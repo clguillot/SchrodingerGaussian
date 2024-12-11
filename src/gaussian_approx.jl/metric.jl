@@ -28,8 +28,8 @@ function GaussianApproxMetricTRHessCFG(X1::Vector{T}, X2::Vector{T}) where{T<:Re
     end
     
     W = zeros(T, gaussian_param_size)
-    jacobian_cfg = ForwardDiff.JacobianConfig(x -> nothing, W, X1, ForwardDiff.Chunk(gaussian_param_size))
-    gradient_cfg = ForwardDiff.GradientConfig(jacobian_cfg, X2, ForwardDiff.Chunk(gaussian_param_size))
+    jacobian_cfg = ForwardDiff.JacobianConfig(x -> nothing, W, X1, ForwardDiff.Chunk(2))
+    gradient_cfg = ForwardDiff.GradientConfig(jacobian_cfg, X2, ForwardDiff.Chunk(2))
     return GaussianApproxMetricTRHessCFG(W, gradient_cfg, jacobian_cfg)
 end
 
