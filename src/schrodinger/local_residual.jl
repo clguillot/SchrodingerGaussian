@@ -3,7 +3,7 @@
         2*real ∫₍₀,ₕ₎ ds <i∂ₜζ₀(s)G0-ζ₀(s)HG0, i∂ₜζ₁(s)G1-ζ₁(s)HG1>
     where
         - The (ζₖ)ₖ are the P1 finite element functions such that ζₖ(lh)=δₖₗ
-        - H(t)g = apply_op(t, Gop, g) for any gaussian wave packet g
+        - H(t)g = apply_op(t, g) for any gaussian wave packet g
 =#
 function schrodinger_gaussian_cross_residual(h::T,
                                         G0::AbstractWavePacket, G1::AbstractWavePacket,
@@ -33,7 +33,7 @@ end
         - The (ζₖ)ₖ are the P1 finite element functions such that ζₖ(lh)=δₖₗ
         - G0 is obtained by unpacking X0
         - HG0 is obtained by unpacking HX0
-        - H(t)g = apply_op(t, Gop, g) for any gaussian wave packet g
+        - H(t)g = apply_op(t, g) for any gaussian wave packet g
 =#
 function schrodinger_gaussian_square_residual(h::T, G0::AbstractWavePacket, HG0::AbstractWavePacket,
                                         ::Val{K}=Val(0)) where{T<:Real, K}
@@ -65,7 +65,7 @@ end
         - s = sign(K1)
         - The (ζₖ)ₖ are the P1 finite element functions such that ζₖ(lh)=δₖₗ
         - G0 is obtained by unpacking X0
-        - H(t)g = apply_op(t, Gop, g) for any gaussian wave packet g
+        - H(t)g = apply_op(t, g) for any gaussian wave packet g
 =#
 function schrodinger_gaussian_linear_residual(h::T,
                                         G0::AbstractWavePacket, HG0::AbstractWavePacket,
@@ -129,13 +129,13 @@ end
     - h = (b-a)/(Lt-1)
     - t = a + (k-1)*h
     - G0 is obtained by unpacking X0
-    - H(t)g = apply_op(t, Gop, g) for any gaussian wave packet g
+    - H(t)g = apply_op(t, g) for any gaussian wave packet g
 =#
 function schrodinger_gaussian_elementary_residual(a::T, b::T, Lt::Int, k::Int,
-                                        apply_op, Gop::Gtype,
+                                        apply_op,
                                         Gf::AbstractMatrix{<:GaussianWavePacket1D},
                                         Gg::AbstractMatrix{<:GaussianWavePacket1D},
-                                        X::AbstractVector{T1}) where{T<:Real, Gtype, T1<:Real}
+                                        X::AbstractVector{T1}) where{T<:Real, T1<:Real}
     if !(1 <= k <= Lt-1)
         throw(BoundsError("k is equal to $k but must be between 1 and Lt-1=$(Lt-1)"))
     end
@@ -149,8 +149,8 @@ function schrodinger_gaussian_elementary_residual(a::T, b::T, Lt::Int, k::Int,
     G0 = unpack_gaussian_parameters(X, (k-1)*gaussian_param_size + 1)
     G1 = unpack_gaussian_parameters(X, k*gaussian_param_size + 1)
 
-    HG0 = apply_op(t, Gop, G0)
-    HG1 = apply_op(t+h, Gop, G1)
+    HG0 = apply_op(t, G0)
+    HG1 = apply_op(t+h, G1)
 
     # Quadratic part
     S = schrodinger_gaussian_square_residual(h, G0, HG0, Val(1)) +
@@ -190,11 +190,11 @@ function SchGaussianLocalGradientCFG2(Lt::Int, X::AbstractVector{T}) where{T<:Re
     return SchGaussianLocalGradientCFG2(X0, cfg_gradient)
 end
 function schrodinger_gaussian_residual_local_gradient!(∇::AbstractVector{T}, a::T, b::T, Lt::Int, k::Int,
-                                        apply_op, Gop::Gtype,
+                                        apply_op,
                                         Gf::AbstractMatrix{<:GaussianWavePacket1D},
                                         Gg::AbstractMatrix{<:GaussianWavePacket1D},
                                         X::AbstractVector{T1},
-                                        cfg::SchGaussianLocalGradientCFG2=SchGaussianLocalGradientCFG2(Lt, X)) where{T<:Real, Gtype, T1<:Real}
+                                        cfg::SchGaussianLocalGradientCFG2=SchGaussianLocalGradientCFG2(Lt, X)) where{T<:Real, T1<:Real}
     if !(1 <= k <= Lt)
         throw(BoundsError("k is equal to $k but must be between 1 and Lt-1=$(Lt-1)"))
     end
@@ -210,11 +210,11 @@ function schrodinger_gaussian_residual_local_gradient!(∇::AbstractVector{T}, a
 
     if k == 1
         G1 = unpack_gaussian_parameters(X, gaussian_param_size + 1)
-        HG1 = apply_op(t+h, Gop, G1)
+        HG1 = apply_op(t+h, G1)
 
         function f_right(Y)
             G = unpack_gaussian_parameters(Y)
-            HG = apply_op(t, Gop, G)
+            HG = apply_op(t, G)
 
             # Quadratic part
             S = schrodinger_gaussian_square_residual(h, G, HG, Val(1))
@@ -232,11 +232,11 @@ function schrodinger_gaussian_residual_local_gradient!(∇::AbstractVector{T}, a
 
     elseif k == Lt
         Gm1 = unpack_gaussian_parameters(X, (Lt-2)*gaussian_param_size + 1)
-        HGm1 = apply_op(t-h, Gop, Gm1)
+        HGm1 = apply_op(t-h, Gm1)
 
         function f_left(Y)
             G = unpack_gaussian_parameters(Y)
-            HG = apply_op(t, Gop, G)
+            HG = apply_op(t, G)
 
             # Quadratic part
             S = schrodinger_gaussian_square_residual(h, G, HG, Val(-1))
@@ -254,12 +254,12 @@ function schrodinger_gaussian_residual_local_gradient!(∇::AbstractVector{T}, a
     else
         Gm1 = unpack_gaussian_parameters(X, (k-2)*gaussian_param_size + 1)
         Gp1 = unpack_gaussian_parameters(X, k*gaussian_param_size + 1)
-        HGm1 = apply_op(t-h, Gop, Gm1)
-        HGp1 = apply_op(t+h, Gop, Gp1)
+        HGm1 = apply_op(t-h, Gm1)
+        HGp1 = apply_op(t+h, Gp1)
 
         function f_middle(Y)
             G = unpack_gaussian_parameters(Y)
-            HG = apply_op(t, Gop, G)
+            HG = apply_op(t, G)
 
             # Quadratic part
             S = schrodinger_gaussian_square_residual(h, G, HG, Val(0))
@@ -288,13 +288,13 @@ end
     where
         - ζ₀, ζₕ are the 2 P1 finite element functions on (0,h)
         - G0, G1 are obtained by unpacking respectively X[1:6] and X[7:12]
-        - H(t)g = apply_op(t, Gop, g) for any gaussian wave packet g
+        - H(t)g = apply_op(t, g) for any gaussian wave packet g
 =#
-function schrodinger_gaussian_local_residual(t::T, h::T, apply_op, Gop::Gtype,
+function schrodinger_gaussian_local_residual(t::T, h::T, apply_op,
                                     Gf0::AbstractVector{<:GaussianWavePacket1D}, Gf1::AbstractVector{<:GaussianWavePacket1D},
                                     Gg0::AbstractVector{<:GaussianWavePacket1D}, Gg1::AbstractVector{<:GaussianWavePacket1D},
                                     X::AbstractVector{T1},
-                                    ::Val{check_len}=Val(true)) where{T<:Real, Gtype, T1<:Real, check_len}
+                                    ::Val{check_len}=Val(true)) where{T<:Real, T1<:Real, check_len}
     
     if check_len && length(X) != 2*gaussian_param_size
         throw(DimensionMismatch("X must be a Vector of size $(2*gaussian_param_size) but has size $(length(X))"))
@@ -303,8 +303,8 @@ function schrodinger_gaussian_local_residual(t::T, h::T, apply_op, Gop::Gtype,
     G0 = unpack_gaussian_parameters(X, 1)
     G1 = unpack_gaussian_parameters(X, gaussian_param_size + 1)
 
-    HG0 = apply_op(t, Gop, G0)
-    HG1 = apply_op(t+h, Gop, G1)
+    HG0 = apply_op(t, G0)
+    HG1 = apply_op(t+h, G1)
 
     #Quadratic part
 
@@ -372,11 +372,11 @@ end
         - ζ₀, ζ₁ are the 2 P1 finite element functions on (0,h)
         - F0, F1 are obtained by unpacking respectively X1[1:6] and X1[7:12]
         - G0, G1 are obtained by unpacking respectively X2[1:6] and X2[7:12]
-        - H(t)g = apply_op(t, Gop, g) for any gaussian wave packet g
+        - H(t)g = apply_op(t, g) for any gaussian wave packet g
 =#
-function schrodinger_gaussian_local_residual_sesquilinear_part(t::T, h::T, apply_op, Gop::Gtype,
+function schrodinger_gaussian_local_residual_sesquilinear_part(t::T, h::T, apply_op,
             X1::AbstractVector{T1}, X2::AbstractVector{T2},
-            ::Val{check_len}=Val(true)) where{T<:Real, Gtype, T1<:Real, T2<:Real, check_len}
+            ::Val{check_len}=Val(true)) where{T<:Real, T1<:Real, T2<:Real, check_len}
     
     if check_len && length(X1) != 2*gaussian_param_size
         throw(DimensionMismatch("X1 and must be a Vector of size $(2*gaussian_param_size) but has size $(length(X))"))
@@ -387,13 +387,13 @@ function schrodinger_gaussian_local_residual_sesquilinear_part(t::T, h::T, apply
     
     F0 = unpack_gaussian_parameters(X1, 1)
     F1 = unpack_gaussian_parameters(X1, gaussian_param_size + 1)
-    HF0 = apply_op(t, Gop, F0)
-    HF1 = apply_op(t+h, Gop, F1)
+    HF0 = apply_op(t, F0)
+    HF1 = apply_op(t+h, F1)
 
     G0 = unpack_gaussian_parameters(X2, 1)
     G1 = unpack_gaussian_parameters(X2, gaussian_param_size + 1)
-    HG0 = apply_op(t, Gop, G0)
-    HG1 = apply_op(t+h, Gop, G1)
+    HG0 = apply_op(t, G0)
+    HG1 = apply_op(t+h, G1)
 
     #Sesquilinear part
 
@@ -421,12 +421,12 @@ end
     where
         - ζ₀, ζ₁ are the 2 P1 finite element functions on (0,h)
         - G0, G1 are obtained by unpacking respectively X[1:6] and X[7:12]
-        - H(t)g = apply_op(t, Gop, g) for any gaussian wave packet g
+        - H(t)g = apply_op(t, g) for any gaussian wave packet g
 =#
-function schrodinger_gaussian_local_residual_linear_part(t::T, h::T, apply_op, Gop::Gtype,
+function schrodinger_gaussian_local_residual_linear_part(t::T, h::T, apply_op,
             Gf0::AbstractVector{<:GaussianWavePacket1D}, Gf1::AbstractVector{<:GaussianWavePacket1D},
             X::AbstractVector{T1},
-            ::Val{check_len}=Val(true)) where{T<:Real, Gtype, T1<:Real, check_len}
+            ::Val{check_len}=Val(true)) where{T<:Real, T1<:Real, check_len}
     
     if check_len && length(X) != 2*gaussian_param_size
         throw(DimensionMismatch("X and must be a Vector of size $(2*gaussian_param_size) but has size $(length(X))"))
@@ -434,8 +434,8 @@ function schrodinger_gaussian_local_residual_linear_part(t::T, h::T, apply_op, G
     
     G0 = unpack_gaussian_parameters(X, 1)
     G1 = unpack_gaussian_parameters(X, gaussian_param_size + 1)
-    HG0 = apply_op(t, Gop, G0)
-    HG1 = apply_op(t+h, Gop, G1)
+    HG0 = apply_op(t, G0)
+    HG1 = apply_op(t+h, G1)
 
     S = zero(Complex{promote_type(T, T1)})
 
@@ -476,18 +476,18 @@ function SchGaussianLocalGradientCFG(X::Vector{T}) where{T<:Real}
     return SchGaussianLocalGradientCFG(gradient_cfg)
 end
 
-function schrodinger_gaussian_local_residual_gradient!(∇::Vector{T}, t::T, h::T, apply_op, Gop::Gtype,
+function schrodinger_gaussian_local_residual_gradient!(∇::Vector{T}, t::T, h::T, apply_op,
                                             Gf0::AbstractVector{<:GaussianWavePacket1D}, Gf1::AbstractVector{<:GaussianWavePacket1D},
                                             Gg0::AbstractVector{<:GaussianWavePacket1D}, Gg1::AbstractVector{<:GaussianWavePacket1D},
                                             X::Vector{T},
-                                            cfg::SchGaussianLocalGradientCFG=SchGaussianLocalGradientCFG(X)) where{T<:Real, Gtype}
+                                            cfg::SchGaussianLocalGradientCFG=SchGaussianLocalGradientCFG(X)) where{T<:Real}
     if length(∇) != 2*gaussian_param_size
         throw(DimensionMismatch("X must be a Vector of size $(2*gaussian_param_size) but has size $(length(∇))"))
     end
     if length(X) != 2*gaussian_param_size
         throw(DimensionMismatch("X must be a Vector of size $(2*gaussian_param_size) but has size $(length(X))"))
     end
-    f(Y) = schrodinger_gaussian_local_residual(t, h, apply_op, Gop, Gf0, Gf1, Gg0, Gg1, Y)
+    f(Y) = schrodinger_gaussian_local_residual(t, h, apply_op, Gf0, Gf1, Gg0, Gg1, Y)
     ForwardDiff.gradient!(∇, f, X, cfg.gradient_cfg, Val(false))
     return ∇
 end

@@ -9,22 +9,22 @@
     Computes the residual |G1 - ∑ₖ Ginit[k]|^2 + (b-a) * ∫_(a,b) dt |(i∂ₜ-H(t)(∑ₖζₖ(t)Gk)|^2
         - (ζₖ)ₖ (k=0,...,Lt-1) are the Lt P1 finite element functions on (a, b)
         - For 1≤k≤Lt Gk is obtained by unpacking X[(k-1)*gaussian_param_size + 1 : k*gaussian_param_size]
-        - H(t)g = apply_op(t, Gop, g) for any gaussian wave packet g
+        - H(t)g = apply_op(t, g) for any gaussian wave packet g
 =#
 function schrodinger_gaussian_residual(a::T, b::T, Lt::Int,
                         Ginit::AbstractVector{<:GaussianWavePacket1D},
-                        apply_op, Gop::Gtype,
+                        apply_op,
                         Gf::AbstractMatrix{<:GaussianWavePacket1D}, Gg::AbstractMatrix{<:GaussianWavePacket1D},
-                        X::AbstractVector{T}) where{T<:Real, Gtype}
+                        X::AbstractVector{T}) where{T<:Real}
     
     if length(X) != gaussian_param_size * Lt
         throw(DimensionMismatch("X must be a Vector of size $(gaussian_param_size * Lt) but has size $(length(X))"))
     end
 
     #PDE residual
-    res = schrodinger_gaussian_elementary_residual(a, b, Lt, 1, apply_op, Gop, Gf, Gg, X)
+    res = schrodinger_gaussian_elementary_residual(a, b, Lt, 1, apply_op, Gf, Gg, X)
     for k=2:Lt-1
-        res += schrodinger_gaussian_elementary_residual(a, b, Lt, k, apply_op, Gop, Gf, Gg, X)
+        res += schrodinger_gaussian_elementary_residual(a, b, Lt, k, apply_op, Gf, Gg, X)
     end
     res *= (b - a)
 
@@ -37,8 +37,8 @@ end
 #=
 
 =#
-function schrodinger_gaussian_residual_sesquilinear_part(a::T, b::T, Lt::Int, apply_op, Gop::Gtype,
-                        X1::AbstractVector{T1}, X2::AbstractVector{T2}) where{T<:Real, Gtype, T1<:Real, T2<:Real}
+function schrodinger_gaussian_residual_sesquilinear_part(a::T, b::T, Lt::Int, apply_op,
+                        X1::AbstractVector{T1}, X2::AbstractVector{T2}) where{T<:Real, T1<:Real, T2<:Real}
     
     if length(X1) != gaussian_param_size * Lt
         throw(DimensionMismatch("X1 must be a Vector of size $(gaussian_param_size * Lt) but has size $(length(X1))"))
@@ -55,7 +55,7 @@ function schrodinger_gaussian_residual_sesquilinear_part(a::T, b::T, Lt::Int, ap
         t = a + (k-1)*h
         @views Y1 = X1[(k-1)*gaussian_param_size + 1 : (k+1)*gaussian_param_size]
         @views Y2 = X2[(k-1)*gaussian_param_size + 1 : (k+1)*gaussian_param_size]
-        @views val += schrodinger_gaussian_local_residual_sesquilinear_part(t, h, apply_op, Gop, Y1, Y2, Val(false))
+        @views val += schrodinger_gaussian_local_residual_sesquilinear_part(t, h, apply_op, Y1, Y2, Val(false))
     end
     val *= (b - a)
 
@@ -71,9 +71,9 @@ end
 
 =#
 function schrodinger_gaussian_residual_linear_part(a::T, b::T, Lt::Int,
-                        Ginit::AbstractVector{<:GaussianWavePacket1D}, apply_op, Gop::Gtype,
+                        Ginit::AbstractVector{<:GaussianWavePacket1D}, apply_op,
                         Gf::AbstractMatrix{<:GaussianWavePacket1D},
-                        X::AbstractVector{T1}) where{T<:Real, Gtype, T1<:Real}
+                        X::AbstractVector{T1}) where{T<:Real, T1<:Real}
     
     if length(X) != gaussian_param_size * Lt
         throw(DimensionMismatch("X must be a Vector of size $(gaussian_param_size * Lt) but has size $(length(X))"))
@@ -121,11 +121,11 @@ function SchGaussianGradientCFG(Lt::Int, X::AbstractVector{T}) where{T<:Real}
 end
 function schrodinger_gaussian_gradient!(∇::AbstractVector{T},
                             a::T, b::T, Lt::Int, Ginit::AbstractVector{<:GaussianWavePacket1D},
-                            apply_op, Gop::Gtype,
+                            apply_op,
                             Gf::Matrix{<:GaussianWavePacket1D},
                             Gg::Matrix{<:GaussianWavePacket1D},
                             X::AbstractVector{T},
-                            cfg::SchGaussianGradientCFG=SchGaussianGradientCFG(Lt, X)) where{T<:Real, Gtype}
+                            cfg::SchGaussianGradientCFG=SchGaussianGradientCFG(Lt, X)) where{T<:Real}
     
     if length(X) != gaussian_param_size * Lt
         throw(DimensionMismatch("X must be a Vector of size $(gaussian_param_size * Lt) but has size $(length(X))"))
@@ -139,7 +139,7 @@ function schrodinger_gaussian_gradient!(∇::AbstractVector{T},
         kb = threadid()
 
         ∇loc = @view ∇[(k-1)*gaussian_param_size + 1 : k*gaussian_param_size]
-        schrodinger_gaussian_residual_local_gradient!(∇loc, a, b, Lt, k, apply_op, Gop, Gf, Gg, X, cfg.cfg_gradient[kb])
+        schrodinger_gaussian_residual_local_gradient!(∇loc, a, b, Lt, k, apply_op, Gf, Gg, X, cfg.cfg_gradient[kb])
         ∇loc .*= (b-a)
     end
 
@@ -193,11 +193,11 @@ end
     Returns ∇, A
 =#
 function schrodinger_gaussian_gradient_and_metric!(∇::AbstractVector{T}, A::BlockBandedMatrix{T},
-                                        a::T, b::T, Lt::Int, Ginit::AbstractVector{<:GaussianWavePacket1D}, apply_op, Gop::Gtype,
+                                        a::T, b::T, Lt::Int, Ginit::AbstractVector{<:GaussianWavePacket1D}, apply_op,
                                         Gf::Matrix{<:GaussianWavePacket1D},
                                         Gg::Matrix{<:GaussianWavePacket1D},
                                         X::AbstractVector{T},
-                                        cfg::SchGaussianGradientAndMetricCFG=SchGaussianGradientAndMetricCFG(Lt, X)) where{T<:Real, Gtype}
+                                        cfg::SchGaussianGradientAndMetricCFG=SchGaussianGradientAndMetricCFG(Lt, X)) where{T<:Real}
     
     if length(X) != gaussian_param_size * Lt
         throw(DimensionMismatch("X must be a Vector of size $(gaussian_param_size * Lt) but has size $(length(X))"))
@@ -213,7 +213,7 @@ function schrodinger_gaussian_gradient_and_metric!(∇::AbstractVector{T}, A::Bl
         kb = threadid()
 
         ∇loc = @view ∇[(k-1)*gaussian_param_size + 1 : k*gaussian_param_size]
-        schrodinger_gaussian_residual_local_gradient!(∇loc, a, b, Lt, k, apply_op, Gop, Gf, Gg, X, cfg.cfg_gradient[kb])
+        schrodinger_gaussian_residual_local_gradient!(∇loc, a, b, Lt, k, apply_op, Gf, Gg, X, cfg.cfg_gradient[kb])
         ∇loc .*= (b-a)
     end
     function loc_metric(k, l)
@@ -238,11 +238,10 @@ function schrodinger_gaussian_gradient_and_metric!(∇::AbstractVector{T}, A::Bl
         end
     end
     #=@threads :static=# for k=1:Lt
-        u1 = @elapsed loc_grad(k)
-        u2 = @elapsed for l=k:min(Lt,k+1)
+        loc_grad(k)
+        for l=k:min(Lt,k+1)
             loc_metric(k, l)
         end
-        println((u1, u2))
     end
 
     #Initial condition

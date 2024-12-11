@@ -6,10 +6,10 @@ include("residual.jl")
     ...
 =#
 function schrodinger_best_gaussian_locally_optimized(a::T, b::T, Lt::Int, G0::GaussianWavePacket1D,
-                                                        apply_op, Gop::Gtype,
+                                                        apply_op,
                                                         Gf::Matrix{<:GaussianWavePacket1D},
                                                         Gg::Matrix{<:GaussianWavePacket1D},
-                                                        maxiter::Int = 20) where{T<:AbstractFloat, Gtype}
+                                                        maxiter::Int = 20) where{T<:AbstractFloat}
     h = (b - a) / (Lt - 1)
     X = zeros(T, gaussian_param_size * Lt)
     pack_gaussian_parameters!(X, G0)
@@ -31,7 +31,7 @@ function schrodinger_best_gaussian_locally_optimized(a::T, b::T, Lt::Int, G0::Ga
         Gfkp1 = @view Gf[:, k+1]
         Ggk = @view Gg[:, k]
         Ggkp1 = @view Gg[:, k+1]
-        f(Y) = schrodinger_gaussian_local_residual(t, h, apply_op, Gop, Gfk, Gfkp1, Ggk, Ggkp1, [Yk ; Y])
+        f(Y) = schrodinger_gaussian_local_residual(t, h, apply_op, Gfk, Gfkp1, Ggk, Ggkp1, [Yk ; Y])
         function fg!(∇, Y)
             ForwardDiff.gradient!(∇, f, Y)
         end
@@ -100,23 +100,23 @@ end
 function schrodinger_gaussian_linesearch(U::Vector{T}, ∇::Vector{T}, X::Vector{T}, d::Vector{T},
                                         a::T, b::T, Lt::Int,
                                         G0::AbstractVector{<:GaussianWavePacket1D},
-                                        apply_op, Gop::Gtype,
+                                        apply_op,
                                         Gf::AbstractMatrix{<:GaussianWavePacket1D},
                                         Gg::AbstractMatrix{<:GaussianWavePacket1D},
-                                        cfg::SchGaussianGradientCFG=SchGaussianGradientCFG(U)) where{T<:Real, Gtype}
+                                        cfg::SchGaussianGradientCFG=SchGaussianGradientCFG(U)) where{T<:Real}
     function ϕ(α)
         @. U = X + α * d
-        return  schrodinger_gaussian_residual(a, b, Lt, G0, apply_op, Gop, Gf, Gg, U)
+        return  schrodinger_gaussian_residual(a, b, Lt, G0, apply_op, Gf, Gg, U)
     end
     function dϕ(α)
         @. U = X + α * d
-        schrodinger_gaussian_gradient!(∇, a, b, Lt, G0, apply_op, Gop, Gf, Gg, U, cfg)
+        schrodinger_gaussian_gradient!(∇, a, b, Lt, G0, apply_op, Gf, Gg, U, cfg)
         return dot(d, ∇)
     end
     function ϕdϕ(α)
         @. U = X + α * d
-        val = schrodinger_gaussian_residual(a, b, Lt, G0, apply_op, Gop, Gf, Gg, U)
-        schrodinger_gaussian_gradient!(∇, a, b, Lt, G0, apply_op, Gop, Gf, Gg, U, cfg)
+        val = schrodinger_gaussian_residual(a, b, Lt, G0, apply_op, Gf, Gg, U)
+        schrodinger_gaussian_gradient!(∇, a, b, Lt, G0, apply_op, Gf, Gg, U, cfg)
         return (val, dot(d, ∇))
     end
 
@@ -175,13 +175,13 @@ end
     Return G::Vector{Gaussian{T}}
 =#
 function schrodinger_best_gaussian(a::T, b::T, Lt::Int, G0::AbstractVector{<:GaussianWavePacket1D},
-                                        apply_op, Gop::Gtype,
+                                        apply_op,
                                         Gf::AbstractMatrix{<:GaussianWavePacket1D},
                                         Gg::AbstractMatrix{<:GaussianWavePacket1D},
                                         abs_tol::T,
                                         cfg::SchBestGaussianCFG=SchBestGaussianCFG(T, Lt);
                                         maxiter::Int = 1000,
-                                        verbose::Bool=false) where{T<:AbstractFloat, Gtype}
+                                        verbose::Bool=false) where{T<:AbstractFloat}
     
     
     GT = GaussianWavePacket1D{Complex{T}, Complex{T}, T, T}
@@ -196,16 +196,16 @@ function schrodinger_best_gaussian(a::T, b::T, Lt::Int, G0::AbstractVector{<:Gau
     # for k=1:Lt
     #     pack_gaussian_parameters!(X, Ginit, (k-1) * gaussian_param_size + 1)
     # end
-    # E0 = schrodinger_gaussian_residual(a, b, Lt, G0, apply_op, Gop, Gf, Gg, X)
+    # E0 = schrodinger_gaussian_residual(a, b, Lt, G0, apply_op, Gf, Gg, X)
     # println("Initial condition residual = $E0")
 
     verbose && println("Computing a time stepping approximation")
     pack_gaussian_parameters!(X, Ginit, 1)
-    @time G_loc_opt = schrodinger_best_gaussian_locally_optimized(a, b, Lt, Ginit, apply_op, Gop, Gf, Gg)
+    @time G_loc_opt = schrodinger_best_gaussian_locally_optimized(a, b, Lt, Ginit, apply_op, Gf, Gg)
     for k=2:Lt
         pack_gaussian_parameters!(X, G_loc_opt[k], (k-1)*gaussian_param_size + 1)
     end
-    verbose && println("Locally optimized Residual = ", schrodinger_gaussian_residual(a, b, Lt, G0, apply_op, Gop, Gf, Gg, X))
+    verbose && println("Locally optimized Residual = ", schrodinger_gaussian_residual(a, b, Lt, G0, apply_op, Gf, Gg, X))
 
     #Gradient and Hessian
     U = cfg.U
@@ -218,17 +218,17 @@ function schrodinger_best_gaussian(a::T, b::T, Lt::Int, G0::AbstractVector{<:Gau
 
     # Global space-time iterations
     iter = 0
-    E0 = schrodinger_gaussian_residual(a, b, Lt, G0, apply_op, Gop, Gf, Gg, X)
+    E0 = schrodinger_gaussian_residual(a, b, Lt, G0, apply_op, Gf, Gg, X)
     @time while iter < maxiter
         iter += 1
         verbose && println("Iteration $iter on $maxiter :")
 
         #Natural Gradient descent step
-        schrodinger_gaussian_gradient_and_metric!(∇, A, a, b, Lt, G0, apply_op, Gop, Gf, Gg, X, cfg_metric)
+        schrodinger_gaussian_gradient_and_metric!(∇, A, a, b, Lt, G0, apply_op, Gf, Gg, X, cfg_metric)
         build_newton_direction!(d, A, ∇, cfg_cholesky)
         res = sqrt(max(dot(d, ∇), zero(T)) / 2)
         @. d = T(-0.5) * d
-        α, E = schrodinger_gaussian_linesearch(U, ∇, X, d, a, b, Lt, G0, apply_op, Gop, Gf, Gg, cfg_gradient)
+        α, E = schrodinger_gaussian_linesearch(U, ∇, X, d, a, b, Lt, G0, apply_op, Gf, Gg, cfg_gradient)
         @. X += α * d
         verbose && println("res = $res")
 
@@ -250,5 +250,5 @@ function schrodinger_best_gaussian(a::T, b::T, Lt::Int, G0::AbstractVector{<:Gau
         G[k] = unpack_gaussian_parameters(X, (k-1)*gaussian_param_size + 1)
     end
 
-    return G, schrodinger_gaussian_residual(a, b, Lt, G0, apply_op, Gop, Gf, Gg, X)
+    return G, schrodinger_gaussian_residual(a, b, Lt, G0, apply_op, Gf, Gg, X)
 end

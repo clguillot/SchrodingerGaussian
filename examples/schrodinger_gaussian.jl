@@ -15,8 +15,8 @@ function test_schrodinger_gaussian(a::T, b::T, Lt, newton_nb_iter::Int, ::Type{T
         G0 = [GaussianWavePacket1D(complex(1.0), complex(1.0), 2.0, -1.0)]
 
         Gv = GaussianWavePacket1D(2.0, 1.0, 0.0, 0.0)
-        function apply_op(t, Gop, G)
-            G_ = Gop * inv_fourier(unitary_product(2*t, fourier(G)))
+        function apply_op(t, G)
+            G_ = Gv * inv_fourier(unitary_product(2*t, fourier(G)))
             return inv_fourier(unitary_product(-2*t, fourier(G_)))
         end
         
@@ -31,7 +31,7 @@ function test_schrodinger_gaussian(a::T, b::T, Lt, newton_nb_iter::Int, ::Type{T
         #     Gg[1, k] = Gaussian{T}(0.5*exp(t), 1.0, 5.0, -1.0)
         # end
 
-        G_list, val = schrodinger_best_gaussian(a, b, Lt, G0, apply_op, Gv, Gf, Gg, sqrt(eps(T)); maxiter=newton_nb_iter, verbose=false)
+        G_list, val = schrodinger_best_gaussian(a, b, Lt, G0, apply_op, Gf, Gg, sqrt(eps(T)); maxiter=newton_nb_iter, verbose=false)
         println("Residual = $val")
 
         # if plot_resut
@@ -61,7 +61,7 @@ function test_schrodinger_gaussian(a::T, b::T, Lt, newton_nb_iter::Int, ::Type{T
         # end
 
         println("Test application :")
-        display(apply_op(1.0, Gv, G0[1]))
+        display(apply_op(1.0, G0[1]))
         
         Gend = G_list[1]
         @printf("(%.12f%+.12fi)exp(-(%.12f%+.12fi)/2(x%+.12f)^2%+.12fxi)\n", real(Gend.λ), imag(Gend.λ), real(Gend.z), imag(Gend.z), -Gend.q, Gend.p)
