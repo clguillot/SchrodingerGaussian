@@ -1,4 +1,3 @@
-include("local_metric.jl")
 include("local_residual.jl")
 include("residual.jl")
 
@@ -18,7 +17,6 @@ function schrodinger_best_gaussian_locally_optimized(a::T, b::T, Lt::Int, G0::Ga
     Y = zeros(T, gaussian_param_size)   #Current parameters
     U = zeros(T, gaussian_param_size)   #Buffer for parameter set
     ∇ = zeros(T, gaussian_param_size)   #Buffer for gradient
-    diff_res = DiffResults.GradientResult(Y)    #Buffer for gradient and value
     cfg_gradient = SchGaussianGradientTimeStepCFG(U)
     cfg_metric = GaussianApproxMetricTRHessCFG(Yk, Y)
     H = zeros(T, gaussian_param_size, gaussian_param_size)  #Buffer for hessian
