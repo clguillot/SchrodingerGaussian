@@ -10,7 +10,7 @@ function schrodinger_best_gaussian_locally_optimized(a::T, b::T, Lt::Int, G0::Ga
                                                         Gf::Matrix{<:GaussianWavePacket1D},
                                                         Gg::Matrix{<:GaussianWavePacket1D},
                                                         maxiter::Int = 20) where{T<:AbstractFloat}
-    h = (b - a) / (Lt - 1)
+    h = (b-a)/(Lt-1)
     X = zeros(T, gaussian_param_size * Lt)
     pack_gaussian_parameters!(X, G0)
 
@@ -19,22 +19,20 @@ function schrodinger_best_gaussian_locally_optimized(a::T, b::T, Lt::Int, G0::Ga
     U = zeros(T, gaussian_param_size)   #Buffer for parameter set
     ∇ = zeros(T, gaussian_param_size)   #Buffer for gradient
     diff_res = DiffResults.GradientResult(Y)    #Buffer for gradient and value
+    cfg_gradient = SchGaussianGradientTimeStepCFG(U)
+    cfg_metric = GaussianApproxMetricTRHessCFG(Yk, Y)
     H = zeros(T, gaussian_param_size, gaussian_param_size)  #Buffer for hessian
 
     for k=1:Lt-1
         t = a + (k-1) * h
         Yk .= X[(k-1)*gaussian_param_size + 1 : k*gaussian_param_size]
         Gk = unpack_gaussian_parameters(Yk, 1)
-        ε = sqrt(real(dot_L2(Gk, Gk))) * (eps(T) / h)^(3/4)
+        ε = norm_L2(Gk) * (eps(T) / h)^(3/4)
 
-        Gfk = @view Gf[:, k]
-        Gfkp1 = @view Gf[:, k+1]
-        Ggk = @view Gg[:, k]
-        Ggkp1 = @view Gg[:, k+1]
-        f(Y) = schrodinger_gaussian_local_residual(t, h, apply_op, Gfk, Gfkp1, Ggk, Ggkp1, [Yk ; Y])
-        function fg!(∇, Y)
-            ForwardDiff.gradient!(∇, f, Y)
-        end
+        Wfk = @view Gf[:, k:k+1]
+        Wgk = @view Gg[:, k:k+1]
+        f(Y) = schrodinger_gaussian_timestep_residual(t, h, Gk, apply_op, Wfk, Wgk, Y)
+        fg!(∇, Y) = schrodinger_gaussian_timestep_residual_gradient!(∇, t, h, Gk, apply_op, Wfk, Wgk, Y, cfg_gradient)
 
         iter = 0
         converged = false
@@ -43,7 +41,8 @@ function schrodinger_best_gaussian_locally_optimized(a::T, b::T, Lt::Int, G0::Ga
         res = typemax(T)
         while iter < maxiter
             fg!(∇, Y)
-            schrodinger_gaussian_metric_time_step_topright_hessian!(H, h, Y)
+            gaussian_approx_metric_topright_hessian!(H, Yk, Y, cfg_metric)
+            H ./= h
             d = - H \ ∇
             res = sqrt(abs(dot(d, ∇)))
 
@@ -58,13 +57,13 @@ function schrodinger_best_gaussian_locally_optimized(a::T, b::T, Lt::Int, G0::Ga
             end
             function dϕ(α)
                 @. U = Y + α * d
-                fg!(diff_res, U)
-                return dot(d, DiffResults.gradient(diff_res))
+                fg!(∇, U)
+                return dot(d, ∇)
             end
             function ϕdϕ(α)
                 @. U = Y + α * d
-                fg!(diff_res, U)
-                return (DiffResults.value(diff_res), dot(d, DiffResults.gradient(diff_res)))
+                fg!(∇, U)
+                return (f(U), dot(d, ∇))
             end
 
             # Creates a linesearch with an alphamax to avoid negative variance for the gaussians
@@ -103,7 +102,7 @@ function schrodinger_gaussian_linesearch(U::Vector{T}, ∇::Vector{T}, X::Vector
                                         apply_op,
                                         Gf::AbstractMatrix{<:GaussianWavePacket1D},
                                         Gg::AbstractMatrix{<:GaussianWavePacket1D},
-                                        cfg::SchGaussianGradientCFG=SchGaussianGradientCFG(U)) where{T<:Real}
+                                        cfg::SchGaussianGradientCFG=SchGaussianGradientCFG(Lt, U)) where{T<:Real}
     function ϕ(α)
         @. U = X + α * d
         return  schrodinger_gaussian_residual(a, b, Lt, G0, apply_op, Gf, Gg, U)
