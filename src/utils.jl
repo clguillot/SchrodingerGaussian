@@ -87,7 +87,10 @@ end
     Unpacking a GaussianWavePacket1D from an AbstractVector
     The values are extracted from index idx to idx + param_size(G)
 =#
-@inline function unpack_gaussian_parameters(X::AbstractVector{T}, idx::Int=1) where{T<:Real}
+@inline function unpack_gaussian_parameters(X::AbstractVector{T}) where{T<:Real}
+    return GaussianWavePacket1D(complex(X[1], X[2]), complex(X[3], X[4]), X[5], X[6])
+end
+@inline function unpack_gaussian_parameters(X::AbstractVector{T}, idx::Int) where{T<:Real}
     return GaussianWavePacket1D(complex(X[idx], X[idx+1]), complex(X[idx+2], X[idx+3]), X[idx+4], X[idx+5])
 end
 

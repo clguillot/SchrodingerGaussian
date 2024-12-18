@@ -14,6 +14,8 @@ using DiffResults
 
 using HermiteWavePackets
 
+import InteractiveUtils: @code_warntype
+
 #=
     Basics
 =#

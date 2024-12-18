@@ -2,7 +2,12 @@
 
 julia_version = "1.11.1"
 manifest_format = "2.0"
-project_hash = "f4ef1fa79d5ed64fd02d5d76d8b630a76a5742e7"
+project_hash = "6148c66e43743af18c15ea2f3916882b22b157ad"
+
+[[deps.AbstractTrees]]
+git-tree-sha1 = "2d9c9a55f9c93e8887ad391fbae72f8ef55e1177"
+uuid = "1520ce14-60c1-5f80-bbc7-55ef81b5835c"
+version = "0.4.5"
 
 [[deps.Adapt]]
 deps = ["LinearAlgebra", "Requires"]
@@ -98,6 +103,12 @@ weakdeps = ["SparseArrays"]
     [deps.BlockBandedMatrices.extensions]
     BlockBandedMatricesSparseArraysExt = "SparseArrays"
 
+[[deps.CodeTracking]]
+deps = ["InteractiveUtils", "UUIDs"]
+git-tree-sha1 = "7eee164f122511d3e4e1ebadb7956939ea7e1c77"
+uuid = "da1fd8a2-8d9e-5ec2-8556-3022fb5608a2"
+version = "1.3.6"
+
 [[deps.CommonSubexpressions]]
 deps = ["MacroTools"]
 git-tree-sha1 = "cda2cfaebb4be89c9084adaca7dd7333369715c5"
@@ -113,6 +124,11 @@ weakdeps = ["Dates", "LinearAlgebra"]
 
     [deps.Compat.extensions]
     CompatLinearAlgebraExt = "LinearAlgebra"
+
+[[deps.Compiler]]
+git-tree-sha1 = "ad013f255db186a21d402e885d67e36c097868f9"
+uuid = "807dbc54-b67e-4c79-8afb-eafe4df6f2e1"
+version = "0.0.2"
 
 [[deps.CompilerSupportLibraries_jll]]
 deps = ["Artifacts", "Libdl"]
@@ -133,6 +149,12 @@ version = "1.5.8"
     IntervalSets = "8197267c-284f-5f27-9208-e0e47529a953"
     LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
     StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+
+[[deps.Cthulhu]]
+deps = ["CodeTracking", "Compiler", "FoldingTrees", "InteractiveUtils", "JuliaSyntax", "PrecompileTools", "Preferences", "REPL", "TypedSyntax", "UUIDs", "Unicode", "WidthLimitedIO"]
+git-tree-sha1 = "82dc4df2cddfca2c6d285cf37720517cf1b5eeb9"
+uuid = "f68482b8-f384-11e8-15f7-abe071a5a75f"
+version = "2.16.0"
 
 [[deps.Dates]]
 deps = ["Printf"]
@@ -212,6 +234,12 @@ weakdeps = ["BandedMatrices", "BlockBandedMatrices", "SparseArrays", "StaticArra
     FiniteDiffSparseArraysExt = "SparseArrays"
     FiniteDiffStaticArraysExt = "StaticArrays"
 
+[[deps.FoldingTrees]]
+deps = ["AbstractTrees", "REPL"]
+git-tree-sha1 = "d94efd85f2fe192cdf664aa8b7c431592faed59e"
+uuid = "1eca21be-9b9b-4ed8-839a-6d8ae26b1781"
+version = "1.2.1"
+
 [[deps.ForwardDiff]]
 deps = ["CommonSubexpressions", "DiffResults", "DiffRules", "LinearAlgebra", "LogExpFunctions", "NaNMath", "Preferences", "Printf", "Random", "SpecialFunctions"]
 git-tree-sha1 = "a2df1b776752e3f344e5116c06d75a10436ab853"
@@ -235,11 +263,16 @@ version = "0.3.14"
 
 [[deps.HermiteWavePackets]]
 deps = ["DoubleFloats", "FastGaussQuadrature", "LinearAlgebra", "SpecialFunctions", "StaticArrays"]
-git-tree-sha1 = "abc2d2f97e5ddb929294a04194613f8405b0807d"
+git-tree-sha1 = "994a306fc43044dace5c75a6b55167c07cf67f27"
 repo-rev = "main"
 repo-url = "https://github.com/clguillot/HermiteWavePackets"
 uuid = "0c63080c-9546-48d9-913a-8575c4379365"
 version = "0.1.0"
+
+[[deps.InteractiveUtils]]
+deps = ["Markdown"]
+uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
+version = "1.11.0"
 
 [[deps.IrrationalConstants]]
 git-tree-sha1 = "630b497eafcc20001bba38a4651b327dcfc491d2"
@@ -251,6 +284,11 @@ deps = ["Artifacts", "Preferences"]
 git-tree-sha1 = "be3dc50a92e5a386872a493a10050136d4703f9b"
 uuid = "692b3bcd-3c85-4b1f-b108-f13ce0eb3210"
 version = "1.6.1"
+
+[[deps.JuliaSyntax]]
+git-tree-sha1 = "937da4713526b96ac9a178e2035019d3b78ead4a"
+uuid = "70703baa-626e-46a2-a12c-08ffd08c73b4"
+version = "0.4.10"
 
 [[deps.LibCURL]]
 deps = ["LibCURL_jll", "MozillaCACerts_jll"]
@@ -389,12 +427,10 @@ version = "0.12.3"
 deps = ["Artifacts", "Dates", "Downloads", "FileWatching", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "Random", "SHA", "TOML", "Tar", "UUIDs", "p7zip_jll"]
 uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 version = "1.11.0"
+weakdeps = ["REPL"]
 
     [deps.Pkg.extensions]
     REPLExt = "REPL"
-
-    [deps.Pkg.weakdeps]
-    REPL = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
 
 [[deps.Polynomials]]
 deps = ["LinearAlgebra", "OrderedCollections", "RecipesBase", "Requires", "Setfield", "SparseArrays"]
@@ -436,6 +472,11 @@ deps = ["Compat", "Printf", "Random", "Requires"]
 git-tree-sha1 = "67fe599f02c3f7be5d97310674cd05429d6f1b42"
 uuid = "be4d8f0f-7fa4-5f49-b795-2f01399ab2dd"
 version = "0.5.10"
+
+[[deps.REPL]]
+deps = ["InteractiveUtils", "Markdown", "Sockets", "StyledStrings", "Unicode"]
+uuid = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
+version = "1.11.0"
 
 [[deps.Random]]
 deps = ["SHA"]
@@ -508,6 +549,10 @@ git-tree-sha1 = "192954ef1208c7019899fbf8049e717f92959682"
 uuid = "1e83bf80-4336-4d27-bf5d-d5a4f845583c"
 version = "1.4.3"
 
+[[deps.StyledStrings]]
+uuid = "f489334b-da3d-4c2e-b8f0-e476e12c162b"
+version = "1.11.0"
+
 [[deps.SuiteSparse_jll]]
 deps = ["Artifacts", "Libdl", "libblastrampoline_jll"]
 uuid = "bea87d4a-7f5b-5778-9afe-8cc45184846c"
@@ -522,6 +567,12 @@ version = "1.0.3"
 deps = ["ArgTools", "SHA"]
 uuid = "a4e569a6-e804-4fa4-b0f3-eef7a1d5b13e"
 version = "1.10.0"
+
+[[deps.TypedSyntax]]
+deps = ["CodeTracking", "JuliaSyntax"]
+git-tree-sha1 = "1465a8187b3d512a99fef13244c213b54e34615d"
+uuid = "d265eb64-f81a-44ad-a842-4247ee1503de"
+version = "1.4.2"
 
 [[deps.UUIDs]]
 deps = ["Random", "SHA"]
@@ -541,6 +592,12 @@ version = "1.11.0"
 git-tree-sha1 = "ffb72124bbdab5f11b66e56b119224c151b3b3eb"
 uuid = "36e64239-2ab9-4580-84fb-56737a503d36"
 version = "0.1.0"
+
+[[deps.WidthLimitedIO]]
+deps = ["Unicode"]
+git-tree-sha1 = "71142739e695823729a335e9bc124ef41ec1433a"
+uuid = "b8c1c048-cf81-46c6-9da0-18c1d99e41f2"
+version = "1.0.1"
 
 [[deps.Zlib_jll]]
 deps = ["Libdl"]

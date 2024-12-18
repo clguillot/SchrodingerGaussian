@@ -1,8 +1,18 @@
 using SchrodingerGaussian
 using HermiteWavePackets
 using Printf
+using StaticArrays
 
 import LinearAlgebra.BLAS
+
+function apply_op(t::T, G::Gtype) where{T<:Real, Gtype<:AbstractWavePacket1D}
+    G1 = inv_fourier(unitary_product(2*t, fourier(G)))
+    # Gv = GaussianWavePacket1D(2.0, 1.0, 0.0, 0.0)
+    # G2 = Gv * G1
+    P = SVector(zero(T), zero(T), -one(T), zero(T), one(T))
+    G2 = polynomial_product(zero(T), P, HermiteWavePacket1D(G1))
+    return inv_fourier(unitary_product(-2*t, fourier(G2)))
+end
 
 function test_schrodinger_gaussian(a::T, b::T, Lt, newton_nb_iter::Int, ::Type{T}, plot_resut) where{T<:AbstractFloat}
 
@@ -13,12 +23,6 @@ function test_schrodinger_gaussian(a::T, b::T, Lt, newton_nb_iter::Int, ::Type{T
         BLAS.set_num_threads(1)
 
         G0 = [GaussianWavePacket1D(complex(1.0), complex(1.0), 2.0, -1.0)]
-
-        Gv = GaussianWavePacket1D(2.0, 1.0, 0.0, 0.0)
-        function apply_op(t, G)
-            G_ = Gv * inv_fourier(unitary_product(2*t, fourier(G)))
-            return inv_fourier(unitary_product(-2*t, fourier(G_)))
-        end
         
         Gf = zeros(GT, 0, Lt)
         # for k in eachindex(Gf)
