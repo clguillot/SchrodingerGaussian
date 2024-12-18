@@ -2,6 +2,7 @@ using SchrodingerGaussian
 using HermiteWavePackets
 using Printf
 using StaticArrays
+using Plots
 
 import LinearAlgebra.BLAS
 
@@ -22,7 +23,7 @@ function test_schrodinger_gaussian(a::T, b::T, Lt, newton_nb_iter::Int, ::Type{T
     try
         BLAS.set_num_threads(1)
 
-        G0 = [GaussianWavePacket1D(complex(1.0), complex(1.0), 2.0, -1.0)]
+        G0 = [GaussianWavePacket1D(complex(0.5), complex(8.0), 1/sqrt(2.0), 0.0)]
         
         Gf = zeros(GT, 0, Lt)
         # for k in eachindex(Gf)
@@ -35,34 +36,37 @@ function test_schrodinger_gaussian(a::T, b::T, Lt, newton_nb_iter::Int, ::Type{T
         #     Gg[1, k] = Gaussian{T}(0.5*exp(t), 1.0, 5.0, -1.0)
         # end
 
+        v(x) = x^4 - x^2
+
         G_list, val = schrodinger_best_gaussian(a, b, Lt, G0, apply_op, Gf, Gg, sqrt(eps(T)); maxiter=newton_nb_iter, verbose=false)
         println("Residual = $val")
 
-        # if plot_resut
-        #     x_list = T.(-12:0.05:12)
-        #     q_list = zeros(length(G_list))
-        #     p_list = zeros(length(G_list))
-        #     norm_list = zeros(length(G_list))
-        #     for k in eachindex(G_list)
-        #         t = a + (k-1) * (b-a)/(Lt-1)
-        #         Geit = Gaussian{T}(1.0, 2im*t, 0.0, 0.0)
-        #         G_real = inv_fourier(Geit * fourier(G_list[k]))
-        #         q_list[k] = G_real.q
-        #         p_list[k] = G_real.p
-        #         norm_list[k] = sqrt(dot_L2(G_real, G_real))
-        #         fx = [abs2(G_real(x)) for x in x_list]
-        #         fx_re = [real(G_real(x)) for x in x_list]
-        #         fx_im = [imag(G_real(x)) for x in x_list]
-        #         fx_v = [real(Gv(x)) for x in x_list]
-        #         if true || k==Lt
-        #             display(plot(x_list, [fx, fx_re, fx_im, fx_v], legend=:none, ylims=(-1.2, 1.2)))
-        #         end
-        #     end
+        if plot_resut
+            x_list = T.(-3:0.02:3)
+            t_list = zeros(Lt)
+            q_list = zeros(Lt)
+            p_list = zeros(Lt)
+            norm_list = zeros(Lt)
+            g = @gif for k in 1:Lt
+                t = a + (k-1) * (b-a)/(Lt-1)
+                G = inv_fourier(unitary_product(2*t, fourier(G_list[k])))
+                q_list[k] = G.q
+                p_list[k] = G.p
+                t_list[k] = t
+                norm_list[k] = norm_L2(G)
+                fgx = G.(x_list)
+                fx = abs2.(fgx)
+                # fx_re = real.(fgx)
+                # fx_im = imag.(fgx)
+                fx_v = v.(x_list)
+                plot(x_list, [fx, fx_v], legend=:none, ylims=(-0.4, 1.2))
+            end fps=60 every (cld(Lt, 60))
 
-        #     display(plot(q_list; label="Position"))
-        #     display(plot(p_list; label="Momentum"))
-        #     display(plot(norm_list; label="L2 Norm"))
-        # end
+            display(g)
+            display(plot(q_list; label="Position"))
+            display(plot(p_list; label="Momentum"))
+            display(plot(norm_list; label="L2 Norm"))
+        end
 
         println("Test application :")
         display(apply_op(1.0, G0[1]))
