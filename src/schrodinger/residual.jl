@@ -12,9 +12,9 @@
         - H(t)g = apply_op(t, g) for any gaussian wave packet g
 =#
 function schrodinger_gaussian_residual(a::T, b::T, Lt::Int,
-                        Ginit::AbstractVector{<:GaussianWavePacket1D},
+                        Ginit::AbstractVector{<:AbstractWavePacket1D},
                         apply_op,
-                        Gf::AbstractMatrix{<:GaussianWavePacket1D}, Gg::AbstractMatrix{<:GaussianWavePacket1D},
+                        Gf::AbstractMatrix{<:AbstractWavePacket1D}, Gg::AbstractMatrix{<:AbstractWavePacket1D},
                         X::AbstractVector{T}) where{T<:Real}
     
     if length(X) != gaussian_param_size * Lt
@@ -89,7 +89,7 @@ function schrodinger_gaussian_residual_linear_part(a::T, b::T, Lt::Int,
     for k=1:Lt-1
         t = a + (k-1)*h
         @views Y = X[(k-1)*gaussian_param_size + 1 : (k+1)*gaussian_param_size]
-        @views val += schrodinger_gaussian_local_residual_linear_part(t, h, Gv,
+        @views val += schrodinger_gaussian_local_residual_linear_part(t, h, apply_op,
                     Gf[:, k], Gf[:, k+1],
                     Y, Val(false))
     end
@@ -123,10 +123,10 @@ function SchGaussianGradientCFG(Lt::Int, X::AbstractVector{T}) where{T<:Real}
     return SchGaussianGradientCFG(Y, fg, cfg0, cfg_gradient)
 end
 function schrodinger_gaussian_gradient!(∇::AbstractVector{T},
-                            a::T, b::T, Lt::Int, Ginit::AbstractVector{<:GaussianWavePacket1D},
+                            a::T, b::T, Lt::Int, Ginit::AbstractVector{<:AbstractWavePacket1D},
                             apply_op,
-                            Gf::Matrix{<:GaussianWavePacket1D},
-                            Gg::Matrix{<:GaussianWavePacket1D},
+                            Gf::Matrix{<:AbstractWavePacket1D},
+                            Gg::Matrix{<:AbstractWavePacket1D},
                             X::AbstractVector{T},
                             cfg::SchGaussianGradientCFG{T}=SchGaussianGradientCFG(Lt, X)) where{T<:Real}
     
@@ -194,14 +194,14 @@ end
     Computes the gradient and hessian of the residual ∫_(a,b) dt |(i∂ₜ-H(t)(∑ₖζₖ(t)Gk)|^2 with respect to X
         - (ζₖ)ₖ (k=0,...,Lt-1) are the Lt P1 finite element functions on (a, b)
         - For k≥1 Gk is obtained by unpacking X[(k-1)*gaussian_param_size + 1 : k*gaussian_param_size]
-        - H(t) = e^(-itΔ)Gv(x)e^(itΔ)
+        - H(t)g = apply_op(t, g)
     - The resulting gradient and hessian are respectively stored into ∇ and A
     Returns ∇, A
 =#
 function schrodinger_gaussian_gradient_and_metric!(∇::AbstractVector{T}, A::BlockBandedMatrix{T},
-                                        a::T, b::T, Lt::Int, Ginit::AbstractVector{<:GaussianWavePacket1D}, apply_op,
-                                        Gf::Matrix{<:GaussianWavePacket1D},
-                                        Gg::Matrix{<:GaussianWavePacket1D},
+                                        a::T, b::T, Lt::Int, Ginit::AbstractVector{<:AbstractWavePacket1D}, apply_op,
+                                        Gf::Matrix{<:AbstractWavePacket1D},
+                                        Gg::Matrix{<:AbstractWavePacket1D},
                                         X::AbstractVector{T},
                                         cfg::SchGaussianGradientAndMetricCFG{T}=SchGaussianGradientAndMetricCFG(Lt, X)) where{T<:Real}
     

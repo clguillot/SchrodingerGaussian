@@ -6,8 +6,8 @@ include("residual.jl")
 =#
 function schrodinger_best_gaussian_locally_optimized(a::T, b::T, Lt::Int, G0::GaussianWavePacket1D,
                                                         apply_op,
-                                                        Gf::Matrix{<:GaussianWavePacket1D},
-                                                        Gg::Matrix{<:GaussianWavePacket1D},
+                                                        Gf::Matrix{<:AbstractWavePacket1D},
+                                                        Gg::Matrix{<:AbstractWavePacket1D},
                                                         maxiter::Int = 20) where{T<:AbstractFloat}
     h = (b-a)/(Lt-1)
     X = zeros(T, gaussian_param_size * Lt)
@@ -96,10 +96,10 @@ end
 #
 function schrodinger_gaussian_linesearch(U::Vector{T}, ∇::Vector{T}, X::Vector{T}, d::Vector{T},
                                         a::T, b::T, Lt::Int,
-                                        G0::AbstractVector{<:GaussianWavePacket1D},
+                                        G0::AbstractVector{<:AbstractWavePacket1D},
                                         apply_op,
-                                        Gf::AbstractMatrix{<:GaussianWavePacket1D},
-                                        Gg::AbstractMatrix{<:GaussianWavePacket1D},
+                                        Gf::AbstractMatrix{<:AbstractWavePacket1D},
+                                        Gg::AbstractMatrix{<:AbstractWavePacket1D},
                                         cfg::SchGaussianGradientCFG=SchGaussianGradientCFG(Lt, U)) where{T<:Real}
     function ϕ(α)
         @. U = X + α * d
@@ -160,21 +160,21 @@ end
 
 #=
     Provides the best gaussian approximation to
-        i∂ₜu = (-Δ + v)u + f + g on (a, b)
-        u(a) = G0
+        i∂ₜu = H(t)u + f(t) + g(t) on (a, b)
+        u(a) = ∑ᵣG0[r]
     by minimizing the residual
-        ∫_(a,b) dt |i∂ₜu(t) - (-Δ + v)u(t) - f(t) - g(t)|²
+        |u(a) - ∑ᵣG0[r]|^2 + ∫_(a,b) dt |i∂ₜu(t) - H(t)u(t) - f(t) - g(t)|²
     where
     - u = ∑ₖ G[k] ζₖ(t)
-    - v = Gv
+    - H(t)g = apply_op(t, g)
     - f(t) = ∑ₖ,ᵣ Gf[r, k] ζₖ(t)
     - g(t) = ∑ₖ,ᵣ Gg[r, k] ζₖ'(t)
-    Return G::Vector{Gaussian{T}}
+    Return G::Vector{<:GaussianWavePacket1D}
 =#
-function schrodinger_best_gaussian(a::T, b::T, Lt::Int, G0::AbstractVector{<:GaussianWavePacket1D},
+function schrodinger_best_gaussian(a::T, b::T, Lt::Int, G0::AbstractVector{<:AbstractWavePacket1D},
                                         apply_op,
-                                        Gf::AbstractMatrix{<:GaussianWavePacket1D},
-                                        Gg::AbstractMatrix{<:GaussianWavePacket1D},
+                                        Gf::AbstractMatrix{<:AbstractWavePacket1D},
+                                        Gg::AbstractMatrix{<:AbstractWavePacket1D},
                                         abs_tol::T,
                                         cfg::SchBestGaussianCFG=SchBestGaussianCFG(T, Lt);
                                         maxiter::Int = 1000,

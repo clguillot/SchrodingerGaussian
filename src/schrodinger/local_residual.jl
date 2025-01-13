@@ -333,6 +333,21 @@ function SchGaussianGradientTimeStepCFG(X::AbstractVector{T}) where{T<:Real}
     cfg_gradient = ForwardDiff.GradientConfig(x -> nothing, X0, ForwardDiff.Chunk(gaussian_param_size))
     return SchGaussianGradientTimeStepCFG(X0, cfg_gradient)
 end
+function schrodinger_gaussian_timestep_residual_gradient!_internal(t, h, G0, HG0, Wf, Wg, apply_op, Y)
+    G = unpack_gaussian_parameters(Y)
+    HG = apply_op(t, G)
+
+    # Quadratic part
+    S = schrodinger_gaussian_square_residual(h, G, HG, Val(-1))
+    S += schrodinger_gaussian_cross_residual(h, G0, G, HG0, HG)
+    
+    # Linear part
+    @unroll for s=-1:0
+        S += @views schrodinger_gaussian_linear_residual(h, G, HG, Wf[:, 2+s], Wg[:, 2+s], Val(s), Val(-1))
+    end
+
+    return S
+end
 function schrodinger_gaussian_timestep_residual_gradient!(∇::AbstractVector{T}, t::T, h::T, G0::AbstractWavePacket,
                                         apply_op,
                                         Wf::AbstractMatrix{<:AbstractWavePacket},
@@ -354,7 +369,6 @@ function schrodinger_gaussian_timestep_residual_gradient!(∇::AbstractVector{T}
 
         # Quadratic part
         S = schrodinger_gaussian_square_residual(h, G, HG, Val(-1))
-        S = schrodinger_gaussian_square_residual(h, G, HG, Val(-1))
         S += schrodinger_gaussian_cross_residual(h, G0, G, HG0, HG)
         
         # Linear part
@@ -365,7 +379,8 @@ function schrodinger_gaussian_timestep_residual_gradient!(∇::AbstractVector{T}
         return S
     end
 
-    return ForwardDiff.gradient!(∇, Y -> f(Y, apply_op), X0, cfg.cfg_gradient, Val(false))
+    f(Y) = schrodinger_gaussian_timestep_residual_gradient!_internal(t, h, G0, HG0, Wf, Wg, apply_op, Y)
+    return ForwardDiff.gradient!(∇, f, X0, cfg.cfg_gradient, Val(false))
 end
 
 #=
