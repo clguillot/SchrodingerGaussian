@@ -49,7 +49,7 @@ function test_schrodinger_greedy(a::T, b::T, Lt, nb_terms::Int, newton_nb_iter::
                 # fx_im = imag.(fgx)
                 fx_v = v.(x_list)
                 plot(x_list, [fx, fx_v], legend=:none, ylims=(-0.4, 1.2))
-            end fps=60 every (cld(Lt, 60))
+            end fps=30 every (max(round(Int, Lt / (30 * (b-a))), 1))
 
             display(g)
             display(plot(norm_list; label="L2 Norm"))
