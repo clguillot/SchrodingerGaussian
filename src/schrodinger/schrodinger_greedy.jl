@@ -44,6 +44,7 @@ function schrodinger_gaussian_greedy(a::T, b::T, Lt::Int, G0::AbstractVector{<:A
     GramMatrix = zeros(Complex{T}, nb_terms, nb_terms)
     F = zeros(Complex{T}, nb_terms)
     Λ = zeros(Complex{T}, nb_terms) #Coefficients
+    res_list = zeros(T, nb_terms)
 
     for iter=1:nb_terms
         verbose && println("Computing term $iter...")
@@ -70,6 +71,7 @@ function schrodinger_gaussian_greedy(a::T, b::T, Lt::Int, G0::AbstractVector{<:A
         Λ[1:iter] = ones(iter)
         res = real(dot(Λ[1:iter], GramMatrix[1:iter, 1:iter], Λ[1:iter]) + dot(F[1:iter], Λ[1:iter]) + C0)
         println("Residual = $res")
+        res_list[iter] = res
         # println("Λ = ", Λ[1:iter])
 
         # display(GramMatrix)
@@ -96,5 +98,5 @@ function schrodinger_gaussian_greedy(a::T, b::T, Lt::Int, G0::AbstractVector{<:A
         end
     end
 
-    return G
+    return G, res_list
 end
