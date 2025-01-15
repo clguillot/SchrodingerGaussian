@@ -142,7 +142,7 @@ function schrodinger_gaussian_gradient!(∇::AbstractVector{T},
         schrodinger_gaussian_residual_local_gradient!(∇loc, a, b, Lt, k, apply_op, Gf, Gg, X, cfg.cfg_gradient[kb])
         ∇loc .*= (b-a)
     end
-    #=@threads :static=# for k in 1:Lt
+    @threads :static for k in 1:Lt
         loc_grad(∇, a, b, Lt, k, apply_op, Gf, Gg, X, cfg)
     end
 
@@ -239,7 +239,7 @@ function schrodinger_gaussian_gradient_and_metric!(∇::AbstractVector{T}, A::Bl
             @views @. A[Block(l, k)] = α * fh'
         end
     end
-    #=@threads :static=# for k=1:Lt
+    @threads :static for k=1:Lt
         loc_grad(∇, a, b, Lt, k, apply_op, Gf, Gg, X, cfg)
         for l=k:min(Lt,k+1)
             loc_metric(A, a, b, Lt, k, l, X, cfg)
