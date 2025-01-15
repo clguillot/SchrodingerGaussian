@@ -56,8 +56,8 @@ function gaussian_approx_residual_constant_part(G_list::AbstractVector{<:Gaussia
 end
 
 #Gradient Config
-mutable struct GaussianApproxGradientCFG
-    cfg_gradient::ForwardDiff.GradientConfig
+mutable struct GaussianApproxGradientCFG{GC}
+    cfg_gradient::GC
 end
 function GaussianApproxGradientCFG(X::Vector{T}) where{T<:Real}
     cfg_gradient = ForwardDiff.GradientConfig(x -> nothing, X, ForwardDiff.Chunk(gaussian_param_size))

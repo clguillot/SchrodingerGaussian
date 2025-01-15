@@ -177,9 +177,9 @@ end
     where
     ...
 =#
-mutable struct SchGaussianLocalGradientCFG{T<:Real}
+mutable struct SchGaussianLocalGradientCFG{T<:Real, CG}
     X0::Vector{T}
-    cfg_gradient::ForwardDiff.GradientConfig
+    cfg_gradient::CG
 end
 function SchGaussianLocalGradientCFG(Lt::Int, X::AbstractVector{T}) where{T<:Real}
     if length(X) != Lt*gaussian_param_size
@@ -257,7 +257,7 @@ function schrodinger_gaussian_residual_local_gradient!(∇::AbstractVector{T}, a
         HGm1 = apply_op(t-h, Gm1)
         HGp1 = apply_op(t+h, Gp1)
 
-        function f_middle(Y, apply_op::Fop) where Fop
+        function f_middle(Y, apply_op)
             G_middle = unpack_gaussian_parameters(Y)
             HG_middle = apply_op(t, G_middle)
 
@@ -353,7 +353,7 @@ function schrodinger_gaussian_timestep_residual_gradient!(∇::AbstractVector{T}
                                         Wf::AbstractMatrix{<:AbstractWavePacket},
                                         Wg::AbstractMatrix{<:AbstractWavePacket},
                                         X::AbstractVector{T},
-                                        cfg::SchGaussianGradientTimeStepCFG=SchGaussianGradientTimeStepCFG(X)) where{T<:Real}
+                                        cfg=SchGaussianGradientTimeStepCFG(X)) where{T<:Real}
     if length(X) != gaussian_param_size
         throw(DimensionMismatch("X must be a Vector of size $gaussian_param_size but has size $(length(X))"))
     end

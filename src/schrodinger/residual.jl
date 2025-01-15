@@ -108,11 +108,11 @@ end
 
 =#
 
-mutable struct SchGaussianGradientCFG{T<:Real}
+mutable struct SchGaussianGradientCFG{T<:Real, CG0, LocCG}
     Y::Vector{T}
     fg::Vector{T}
-    cfg0::GaussianApproxGradientCFG
-    cfg_gradient::Vector{SchGaussianLocalGradientCFG{T}}
+    cfg0::CG0
+    cfg_gradient::Vector{LocCG}
 end
 function SchGaussianGradientCFG(Lt::Int, X::AbstractVector{T}) where{T<:Real}
     nt = nthreads()
@@ -128,7 +128,7 @@ function schrodinger_gaussian_gradient!(∇::AbstractVector{T},
                             Gf::Matrix{<:AbstractWavePacket1D},
                             Gg::Matrix{<:AbstractWavePacket1D},
                             X::AbstractVector{T},
-                            cfg::SchGaussianGradientCFG{T}=SchGaussianGradientCFG(Lt, X)) where{T<:Real}
+                            cfg=SchGaussianGradientCFG(Lt, X)) where{T<:Real}
     
     if length(X) != gaussian_param_size * Lt
         throw(DimensionMismatch("X must be a Vector of size $(gaussian_param_size * Lt) but has size $(length(X))"))
@@ -138,15 +138,12 @@ function schrodinger_gaussian_gradient!(∇::AbstractVector{T},
     end
 
     #PDE residual
-    function f_grad(k)
+    #=@threads :static=# for k in 1:Lt
         kb = threadid()
 
         ∇loc = @view ∇[(k-1)*gaussian_param_size + 1 : k*gaussian_param_size]
         schrodinger_gaussian_residual_local_gradient!(∇loc, a, b, Lt, k, apply_op, Gf, Gg, X, cfg.cfg_gradient[kb])
         ∇loc .*= (b-a)
-    end
-    #=@threads :static=# for k in 1:Lt
-        f_grad(k)
     end
 
     #Initial condition
@@ -163,7 +160,7 @@ end
 
 =#
 
-mutable struct SchGaussianGradientAndMetricCFG{T<:Real}
+mutable struct SchGaussianGradientAndMetricCFG{T<:Real, CG0, CG, CM}
     Yk::Vector{Vector{T}}
     Yl::Vector{Vector{T}}
     Y::Vector{Vector{T}}
@@ -171,9 +168,9 @@ mutable struct SchGaussianGradientAndMetricCFG{T<:Real}
     fh0::Matrix{T}
     fg::Vector{Vector{T}}
     fh::Vector{Matrix{T}}
-    cfg0::GaussianApproxGradientAndMetricCFG
-    cfg_gradient::Vector{SchGaussianLocalGradientCFG{T}}
-    cfg_metric::Vector{GaussianApproxMetricTRHessCFG{T}}
+    cfg0::CG0
+    cfg_gradient::Vector{CG}
+    cfg_metric::Vector{CM}
 end
 function SchGaussianGradientAndMetricCFG(Lt::Int, X::AbstractVector{T}) where{T<:Real}
     nt = Threads.nthreads()

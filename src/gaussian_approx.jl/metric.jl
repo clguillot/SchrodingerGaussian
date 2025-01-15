@@ -14,10 +14,10 @@ function gaussian_approx_metric(X1::AbstractVector{T1}, X2::AbstractVector{T2}, 
 end
 
 #Metric config
-mutable struct GaussianApproxMetricTRHessCFG{T}
+mutable struct GaussianApproxMetricTRHessCFG{T, GC, JC}
     W::Vector{T}
-    gradient_cfg::ForwardDiff.GradientConfig
-    jacobian_cfg::ForwardDiff.JacobianConfig
+    gradient_cfg::GC
+    jacobian_cfg::JC
 end
 function GaussianApproxMetricTRHessCFG(X1::Vector{T}, X2::Vector{T}) where{T<:Real}
     if length(X1) != gaussian_param_size
@@ -37,7 +37,7 @@ end
     Computes ∂ₓ₁∂ₓ₂E(X1, X2)
     where E(x1, x2) = gaussian_approx_metric(x1, x2)
 =#
-function gaussian_approx_metric_topright_hessian!(Htr::Matrix{T}, X1::Vector{T}, X2::Vector{T}, cfg::GaussianApproxMetricTRHessCFG=GaussianApproxMetricTRHessCFG(X1, X2)) where{T<:Real}
+function gaussian_approx_metric_topright_hessian!(Htr::Matrix{T}, X1::Vector{T}, X2::Vector{T}, cfg=GaussianApproxMetricTRHessCFG(X1, X2)) where{T<:Real}
     if size(Htr) != (gaussian_param_size, gaussian_param_size)
         throw(DimensionMismatch("Htr must be a square matrix of size $(gaussian_param_size)x$(gaussian_param_size) but has size $(size(Htr))"))
     end
