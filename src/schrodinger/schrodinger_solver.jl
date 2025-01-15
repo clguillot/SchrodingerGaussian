@@ -190,19 +190,19 @@ function schrodinger_best_gaussian(a::T, b::T, Lt::Int, G0::AbstractVector{<:Abs
     @time Ginit = gaussian_approx(G0, unpack_gaussian_parameters(rand(T, gaussian_param_size)); verbose=verbose)
     
     # Fills X with the approximation of the initial condition
-    # for k=1:Lt
-    #     pack_gaussian_parameters!(X, Ginit, (k-1) * gaussian_param_size + 1)
-    # end
+    for k=1:Lt
+        pack_gaussian_parameters!(X, Ginit, (k-1) * gaussian_param_size + 1)
+    end
     # E0 = schrodinger_gaussian_residual(a, b, Lt, G0, apply_op, Gf, Gg, X)
     # println("Initial condition residual = $E0")
 
-    verbose && println("Computing a time stepping approximation")
-    pack_gaussian_parameters!(X, Ginit, 1)
-    @time G_loc_opt = schrodinger_best_gaussian_locally_optimized(a, b, Lt, Ginit, apply_op, Gf, Gg)
-    for k=2:Lt
-        pack_gaussian_parameters!(X, G_loc_opt[k], (k-1)*gaussian_param_size + 1)
-    end
-    verbose && println("Locally optimized Residual = ", schrodinger_gaussian_residual(a, b, Lt, G0, apply_op, Gf, Gg, X))
+    # verbose && println("Computing a time stepping approximation")
+    # pack_gaussian_parameters!(X, Ginit, 1)
+    # @time G_loc_opt = schrodinger_best_gaussian_locally_optimized(a, b, Lt, Ginit, apply_op, Gf, Gg)
+    # for k=2:Lt
+    #     pack_gaussian_parameters!(X, G_loc_opt[k], (k-1)*gaussian_param_size + 1)
+    # end
+    # verbose && println("Locally optimized Residual = ", schrodinger_gaussian_residual(a, b, Lt, G0, apply_op, Gf, Gg, X))
 
     #Gradient and Hessian
     U = cfg.U
