@@ -1,93 +1,6 @@
 include("local_residual.jl")
 include("residual.jl")
 
-#=
-    ...
-=#
-function schrodinger_best_gaussian_locally_optimized(a::T, b::T, Lt::Int, G0::GaussianWavePacket1D,
-                                                        apply_op,
-                                                        Gf::Matrix{<:AbstractWavePacket1D},
-                                                        Gg::Matrix{<:AbstractWavePacket1D},
-                                                        maxiter::Int = 20) where{T<:AbstractFloat}
-    h = (b-a)/(Lt-1)
-    X = zeros(T, gaussian_param_size * Lt)
-    pack_gaussian_parameters!(X, G0)
-
-    Yk = zeros(T, gaussian_param_size)  #Previous parameters
-    Y = zeros(T, gaussian_param_size)   #Current parameters
-    U = zeros(T, gaussian_param_size)   #Buffer for parameter set
-    ∇ = zeros(T, gaussian_param_size)   #Buffer for gradient
-    cfg_gradient = SchGaussianGradientTimeStepCFG(U)
-    cfg_metric = GaussianApproxMetricTRHessCFG(Yk, Y)
-    H = zeros(T, gaussian_param_size, gaussian_param_size)  #Buffer for hessian
-
-    for k=1:Lt-1
-        t = a + (k-1) * h
-        Yk .= X[(k-1)*gaussian_param_size + 1 : k*gaussian_param_size]
-        Gk = unpack_gaussian_parameters(Yk, 1)
-        ε = norm_L2(Gk) * (eps(T) / h)^(3/4)
-
-        Wfk = @view Gf[:, k:k+1]
-        Wgk = @view Gg[:, k:k+1]
-        f(Y) = schrodinger_gaussian_timestep_residual(t, h, Gk, apply_op, Wfk, Wgk, Y)
-        fg!(∇, Y) = schrodinger_gaussian_timestep_residual_gradient!(∇, t, h, Gk, apply_op, Wfk, Wgk, Y, cfg_gradient)
-
-        iter = 0
-        converged = false
-        fx = f(Yk)
-        Y .= Yk
-        res = typemax(T)
-        while iter < maxiter
-            fg!(∇, Y)
-            gaussian_approx_metric_topright_hessian!(H, Yk, Y, cfg_metric)
-            H ./= h
-            d = - H \ ∇
-            res = sqrt(abs(dot(d, ∇)))
-
-            if res <= ε
-                converged = true
-                break
-            end
-
-            function ϕ(α)
-                @. U = Y + α * d
-                return f(U)
-            end
-            function dϕ(α)
-                @. U = Y + α * d
-                fg!(∇, U)
-                return dot(d, ∇)
-            end
-            function ϕdϕ(α)
-                @. U = Y + α * d
-                fg!(∇, U)
-                return (f(U), dot(d, ∇))
-            end
-
-            # Creates a linesearch with an alphamax to avoid negative variance for the gaussians
-            # More precisely, the real part of the variance cannot be more than halved
-            rez = real(unpack_gaussian_parameter_z(Y))
-            rez_dir = real(unpack_gaussian_parameter_z(d))
-            alphamax = (rez_dir < 0) ? -rez / (2*rez_dir) : typemax(T)
-            ls = HagerZhang{T}(;alphamax=alphamax)
-
-            dϕ_0 = dϕ(zero(T))
-            α, fx = ls(ϕ, dϕ, ϕdϕ, min(T(0.5), alphamax), fx, dϕ_0)
-            @. Y += α * d
-
-            iter += 1
-        end
-        @views X[k*gaussian_param_size + 1 : (k+1)*gaussian_param_size] .= Y
-    end
-
-    G = zeros(GaussianWavePacket1D{Complex{T}, Complex{T}, T, T}, Lt)
-    for k=1:Lt
-        G[k] = unpack_gaussian_parameters(X, (k-1)*gaussian_param_size + 1)
-    end
-
-    return G
-end
-
 # A \ ∇
 function build_newton_direction!(d::Vector{T}, A::BlockBandedMatrix{T}, ∇::Vector{T}, cfg::BlockCholeskyStaticConfig=BlockCholeskyStaticConfig(∇, Val(gaussian_param_size))) where{T <: AbstractFloat}
     return block_tridiagonal_cholesky_solver_static!(d, A, ∇, Val(gaussian_param_size), cfg)
@@ -249,3 +162,92 @@ function schrodinger_best_gaussian(a::T, b::T, Lt::Int, G0::AbstractVector{<:Abs
 
     return G, schrodinger_gaussian_residual(a, b, Lt, G0, apply_op, Gf, Gg, X)
 end
+
+
+
+#=
+    ...
+=#
+# function schrodinger_best_gaussian_locally_optimized(a::T, b::T, Lt::Int, G0::GaussianWavePacket1D,
+#                                                         apply_op,
+#                                                         Gf::Matrix{<:AbstractWavePacket1D},
+#                                                         Gg::Matrix{<:AbstractWavePacket1D},
+#                                                         maxiter::Int = 20) where{T<:AbstractFloat}
+#     h = (b-a)/(Lt-1)
+#     X = zeros(T, gaussian_param_size * Lt)
+#     pack_gaussian_parameters!(X, G0)
+
+#     Yk = zeros(T, gaussian_param_size)  #Previous parameters
+#     Y = zeros(T, gaussian_param_size)   #Current parameters
+#     U = zeros(T, gaussian_param_size)   #Buffer for parameter set
+#     ∇ = zeros(T, gaussian_param_size)   #Buffer for gradient
+#     cfg_gradient = SchGaussianGradientTimeStepCFG(U)
+#     cfg_metric = GaussianApproxMetricTRHessCFG(Yk, Y)
+#     H = zeros(T, gaussian_param_size, gaussian_param_size)  #Buffer for hessian
+
+#     for k=1:Lt-1
+#         t = a + (k-1) * h
+#         Yk .= X[(k-1)*gaussian_param_size + 1 : k*gaussian_param_size]
+#         Gk = unpack_gaussian_parameters(Yk, 1)
+#         ε = norm_L2(Gk) * (eps(T) / h)^(3/4)
+
+#         Wfk = @view Gf[:, k:k+1]
+#         Wgk = @view Gg[:, k:k+1]
+#         f(Y) = schrodinger_gaussian_timestep_residual(t, h, Gk, apply_op, Wfk, Wgk, Y)
+#         fg!(∇, Y) = schrodinger_gaussian_timestep_residual_gradient!(∇, t, h, Gk, apply_op, Wfk, Wgk, Y, cfg_gradient)
+
+#         iter = 0
+#         converged = false
+#         fx = f(Yk)
+#         Y .= Yk
+#         res = typemax(T)
+#         while iter < maxiter
+#             fg!(∇, Y)
+#             gaussian_approx_metric_topright_hessian!(H, Yk, Y, cfg_metric)
+#             H ./= h
+#             d = - H \ ∇
+#             res = sqrt(abs(dot(d, ∇)))
+
+#             if res <= ε
+#                 converged = true
+#                 break
+#             end
+
+#             function ϕ(α)
+#                 @. U = Y + α * d
+#                 return f(U)
+#             end
+#             function dϕ(α)
+#                 @. U = Y + α * d
+#                 fg!(∇, U)
+#                 return dot(d, ∇)
+#             end
+#             function ϕdϕ(α)
+#                 @. U = Y + α * d
+#                 fg!(∇, U)
+#                 return (f(U), dot(d, ∇))
+#             end
+
+#             # Creates a linesearch with an alphamax to avoid negative variance for the gaussians
+#             # More precisely, the real part of the variance cannot be more than halved
+#             rez = real(unpack_gaussian_parameter_z(Y))
+#             rez_dir = real(unpack_gaussian_parameter_z(d))
+#             alphamax = (rez_dir < 0) ? -rez / (2*rez_dir) : typemax(T)
+#             ls = HagerZhang{T}(;alphamax=alphamax)
+
+#             dϕ_0 = dϕ(zero(T))
+#             α, fx = ls(ϕ, dϕ, ϕdϕ, min(T(0.5), alphamax), fx, dϕ_0)
+#             @. Y += α * d
+
+#             iter += 1
+#         end
+#         @views X[k*gaussian_param_size + 1 : (k+1)*gaussian_param_size] .= Y
+#     end
+
+#     G = zeros(GaussianWavePacket1D{Complex{T}, Complex{T}, T, T}, Lt)
+#     for k=1:Lt
+#         G[k] = unpack_gaussian_parameters(X, (k-1)*gaussian_param_size + 1)
+#     end
+
+#     return G
+# end
