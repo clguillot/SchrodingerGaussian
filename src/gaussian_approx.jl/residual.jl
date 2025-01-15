@@ -66,7 +66,7 @@ end
 #Gradient
 function gaussian_approx_gradient!(∇::Vector{T}, G_list::AbstractVector{<:GaussianWavePacket1D},
                                     X::Vector{T},
-                                    cfg::GaussianApproxGradientCFG=GaussianApproxGradientCFG(X)) where{T<:Real}
+                                    cfg=GaussianApproxGradientCFG(X)) where{T<:Real}
     f(Y) = gaussian_approx_residual(Y, G_list, Val(false))
     ForwardDiff.gradient!(∇, f, X, cfg.cfg_gradient, Val(false))
     return ∇

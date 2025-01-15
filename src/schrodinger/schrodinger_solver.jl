@@ -135,15 +135,15 @@ function schrodinger_gaussian_linesearch(U::Vector{T}, ∇::Vector{T}, X::Vector
     return α_opt, ϕ_0
 end
 
-struct SchBestGaussianCFG{T}
+struct SchBestGaussianCFG{T, CG, CM, Cchol}
     X::Vector{T}
     U::Vector{T}
     ∇::Vector{T}
     d::Vector{T}
     A::BlockBandedMatrix{T}
-    cfg_gradient::SchGaussianGradientCFG{T}
-    cfg_metric::SchGaussianGradientAndMetricCFG{T}
-    cfg_cholesky::BlockCholeskyStaticConfig{T}
+    cfg_gradient::CG
+    cfg_metric::CM
+    cfg_cholesky::Cchol
 end
 function SchBestGaussianCFG(::Type{T}, Lt::Int) where{T<:Real}
     X = zeros(T, gaussian_param_size * Lt)  #Current parameters
@@ -176,7 +176,7 @@ function schrodinger_best_gaussian(a::T, b::T, Lt::Int, G0::AbstractVector{<:Abs
                                         Gf::AbstractMatrix{<:AbstractWavePacket1D},
                                         Gg::AbstractMatrix{<:AbstractWavePacket1D},
                                         abs_tol::T,
-                                        cfg::SchBestGaussianCFG=SchBestGaussianCFG(T, Lt);
+                                        cfg=SchBestGaussianCFG(T, Lt);
                                         maxiter::Int = 1000,
                                         verbose::Bool=false) where{T<:AbstractFloat}
     

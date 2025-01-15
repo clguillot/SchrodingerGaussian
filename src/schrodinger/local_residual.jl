@@ -194,7 +194,7 @@ function schrodinger_gaussian_residual_local_gradient!(∇::AbstractVector{T}, a
                                         Gf::AbstractMatrix{<:AbstractWavePacket},
                                         Gg::AbstractMatrix{<:AbstractWavePacket},
                                         X::AbstractVector{T},
-                                        cfg::SchGaussianLocalGradientCFG{T}=SchGaussianLocalGradientCFG(Lt, X)) where{T<:Real, Fop}
+                                        cfg=SchGaussianLocalGradientCFG(Lt, X)) where{T<:Real, Fop}
     if !(1 <= k <= Lt)
         throw(BoundsError("k is equal to $k but must be between 1 and Lt-1=$(Lt-1)"))
     end
@@ -324,9 +324,9 @@ end
 #=
 
 =#
-mutable struct SchGaussianGradientTimeStepCFG{T<:Real}
+mutable struct SchGaussianGradientTimeStepCFG{T<:Real, CG}
     X0::Vector{T}
-    cfg_gradient::ForwardDiff.GradientConfig
+    cfg_gradient::CG
 end
 function SchGaussianGradientTimeStepCFG(X::AbstractVector{T}) where{T<:Real}
     X0 = zeros(T, gaussian_param_size)

@@ -108,11 +108,11 @@ end
 
 =#
 
-mutable struct SchGaussianGradientCFG{T<:Real, CG0, LocCG}
+mutable struct SchGaussianGradientCFG{T<:Real, CG0, CGloc}
     Y::Vector{T}
     fg::Vector{T}
     cfg0::CG0
-    cfg_gradient::Vector{LocCG}
+    cfg_gradient::Vector{CGloc}
 end
 function SchGaussianGradientCFG(Lt::Int, X::AbstractVector{T}) where{T<:Real}
     nt = nthreads()
@@ -200,7 +200,7 @@ function schrodinger_gaussian_gradient_and_metric!(∇::AbstractVector{T}, A::Bl
                                         Gf::Matrix{<:AbstractWavePacket1D},
                                         Gg::Matrix{<:AbstractWavePacket1D},
                                         X::AbstractVector{T},
-                                        cfg::SchGaussianGradientAndMetricCFG{T}=SchGaussianGradientAndMetricCFG(Lt, X)) where{T<:Real}
+                                        cfg=SchGaussianGradientAndMetricCFG(Lt, X)) where{T<:Real}
     
     if length(X) != gaussian_param_size * Lt
         throw(DimensionMismatch("X must be a Vector of size $(gaussian_param_size * Lt) but has size $(length(X))"))
