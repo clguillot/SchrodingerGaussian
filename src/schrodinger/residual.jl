@@ -22,12 +22,9 @@ function schrodinger_gaussian_residual(a::T, b::T, Lt::Int,
     end
 
     #PDE residual
-    function f_res(k)
-        schrodinger_gaussian_elementary_residual(a, b, Lt, k, apply_op, Gf, Gg, X)
-    end
-    res = f_res(1)
-    for k=2:Lt-1
-        res += f_res(k)
+    res = schrodinger_gaussian_elementary_residual(a, b, Lt, 1, apply_op, Gf, Gg, X)
+    for k in 2:Lt-1
+        res += schrodinger_gaussian_elementary_residual(a, b, Lt, k, apply_op, Gf, Gg, X)
     end
     res *= (b - a)
 
@@ -138,12 +135,15 @@ function schrodinger_gaussian_gradient!(∇::AbstractVector{T},
     end
 
     #PDE residual
-    #=@threads :static=# for k in 1:Lt
+    function loc_grad(∇, a, b, Lt, k, apply_op, Gf, Gg, X, cfg)
         kb = threadid()
 
         ∇loc = @view ∇[(k-1)*gaussian_param_size + 1 : k*gaussian_param_size]
         schrodinger_gaussian_residual_local_gradient!(∇loc, a, b, Lt, k, apply_op, Gf, Gg, X, cfg.cfg_gradient[kb])
         ∇loc .*= (b-a)
+    end
+    #=@threads :static=# for k in 1:Lt
+        loc_grad(∇, a, b, Lt, k, apply_op, Gf, Gg, X, cfg)
     end
 
     #Initial condition
@@ -209,22 +209,21 @@ function schrodinger_gaussian_gradient_and_metric!(∇::AbstractVector{T}, A::Bl
         throw(DimensionMismatch("∇ must be a Vector of size $(gaussian_param_size * Lt) but has size $(length(∇))"))
     end
 
-    h = (b-a)/(Lt-1)
-
     # PDE residual
-    function loc_grad(k)
+    function loc_grad(∇, a, b, Lt, k, apply_op, Gf, Gg, X, cfg)
         kb = threadid()
 
         ∇loc = @view ∇[(k-1)*gaussian_param_size + 1 : k*gaussian_param_size]
         schrodinger_gaussian_residual_local_gradient!(∇loc, a, b, Lt, k, apply_op, Gf, Gg, X, cfg.cfg_gradient[kb])
         ∇loc .*= (b-a)
     end
-    function loc_metric(k, l)
+    function loc_metric(A, a, b, Lt, k, l, X, cfg)
         #Recovers buffers
         kb = threadid()
         Yk = cfg.Yk[kb]
         Yl = cfg.Yl[kb]
         fh = cfg.fh[kb]
+        h = (b-a)/(Lt-1)
 
         @views Yk .= X[(k-1)*gaussian_param_size + 1 : k*gaussian_param_size]
         @views Yl .= X[(l-1)*gaussian_param_size + 1 : l*gaussian_param_size]
@@ -241,9 +240,9 @@ function schrodinger_gaussian_gradient_and_metric!(∇::AbstractVector{T}, A::Bl
         end
     end
     #=@threads :static=# for k=1:Lt
-        loc_grad(k)
+        loc_grad(∇, a, b, Lt, k, apply_op, Gf, Gg, X, cfg)
         for l=k:min(Lt,k+1)
-            loc_metric(k, l)
+            loc_metric(A, a, b, Lt, k, l, X, cfg)
         end
     end
 
