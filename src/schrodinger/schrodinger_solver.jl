@@ -187,7 +187,7 @@ function schrodinger_best_gaussian(a::T, b::T, Lt::Int, G0::AbstractVector{<:Abs
     X = cfg.X
 
     verbose && println("Computing an approximation of the initial condition")
-    @time Ginit = gaussian_approx(G0, unpack_gaussian_parameters(rand(T, gaussian_param_size)); verbose=verbose)
+    @time Ginit = gaussian_approx(G0, unpack_gaussian_parameters(rand(T, gaussian_param_size)); verbose=verbose, maxiter=100*maxiter)
     
     # Fills X with the approximation of the initial condition
     for k=1:Lt
