@@ -12,23 +12,21 @@
     Return G::Vector{<:GaussianWavePacket1D}
 =#
 function schrodinger_gaussian_greedy(a::T, b::T, Lt::Int, G0::AbstractVector{<:AbstractWavePacket}, apply_op,
-                                        Gf::AbstractMatrix{<:AbstractWavePacket},
                                         nb_terms::Int;
                                         maxiter::Int = 1000,
                                         verbose::Bool=false, fullverbose::Bool=false) where{T<:AbstractFloat}
     
     verbose = verbose || fullverbose
 
-    nf = size(Gf, 1)
     n0 = length(G0)
 
     G0_ = zeros(eltype(G0), n0 + nb_terms)
     G0_[1 : n0] = G0
 
     TG = GaussianWavePacket1D{Complex{T}, Complex{T}, T, T}
-    Tf = promote_type(eltype(Gf), typeof(apply_op(zero(T), zero(TG))))
-    Gf_ = zeros(Tf, nf + nb_terms, Lt)
-    @views Gf_[1:nf, :] .= Gf
+    Tf = typeof(apply_op(zero(T), zero(TG)))
+    Gf_ = zeros(Tf, nb_terms, Lt)
+    Gf = zeros(TG, 0, Lt)
 
     Gg_ = zeros(TG, nb_terms, Lt)
 
@@ -49,7 +47,7 @@ function schrodinger_gaussian_greedy(a::T, b::T, Lt::Int, G0::AbstractVector{<:A
     for iter=1:nb_terms
         verbose && println("Computing term $iter...")
         @time G[iter, :], _ = schrodinger_best_gaussian(a, b, Lt, G0_[1 : n0 + iter - 1], apply_op,
-                Gf_[1:nf+iter-1, :], Gg_[1:iter-1, :], abs_tol, cfg;
+                Gf_[1:iter-1, :], Gg_[1:iter-1, :], abs_tol, cfg;
                 maxiter=maxiter, verbose=fullverbose)
         
         #Packs the result
@@ -80,7 +78,7 @@ function schrodinger_gaussian_greedy(a::T, b::T, Lt::Int, G0::AbstractVector{<:A
         for j=1:iter
             for k=1:Lt
                 t = a + (k-1)/(Lt-1) * (b - a)
-                Gf_[nf + j, k] = Λ[j] * apply_op(t, G[j, k])
+                Gf_[j, k] = Λ[j] * apply_op(t, G[j, k])
                 Gg_[j, k] = -1im * Λ[j] * G[j, k]
             end
             G0_[n0 + j] = - Λ[j] * G[j, 1]

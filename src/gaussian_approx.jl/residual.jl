@@ -2,14 +2,14 @@
 #=
     Computes |G_X - ∑G_list[k]|^2 - |∑G_list[k]|^2
 =#
-function gaussian_approx_residual(X::AbstractVector{T}, G_list::AbstractVector{<:GaussianWavePacket1D}, ::Val{check_len}=Val(true)) where{T<:Real, check_len}
+function gaussian_approx_residual(X::AbstractVector{T}, G_list::AbstractVector{TG}, ::Val{check_len}=Val(true)) where{T<:Real, check_len, TG<:AbstractWavePacket}
     if check_len && length(X) != gaussian_param_size
         throw(DimensionMismatch("X must be a vector of size $gaussian_param_size"))
     end
 
     G = unpack_gaussian_parameters(X)
 
-    N = zero(real(promote_type(eltype(G), eltype(eltype(G_list)))))
+    N = zero(real(promote_type(core_type(G), core_type(TG))))
 
     # Quadratic part
     N += real(dot_L2(G, G))
@@ -25,7 +25,7 @@ end
 #=
     Computes -2<G_X, ∑G_list[k]>
 =#
-function gaussian_approx_residual_linear_part(X::AbstractVector{T}, G_list::AbstractVector{<:GaussianWavePacket1D}, ::Val{check_len}=Val(true)) where{T<:Real, check_len}
+function gaussian_approx_residual_linear_part(X::AbstractVector{T}, G_list::AbstractVector{TG}, ::Val{check_len}=Val(true)) where{T<:Real, TG<:AbstractWavePacket, check_len}
     
     if check_len && length(X) != gaussian_param_size
         throw(DimensionMismatch("X must be a vector of size $gaussian_param_size"))
@@ -33,7 +33,7 @@ function gaussian_approx_residual_linear_part(X::AbstractVector{T}, G_list::Abst
 
     G = unpack_gaussian_parameters(X)
 
-    N = zero(real(promote_type(eltype(G), eltype(eltype(G_list)))))
+    N = zero(real(promote_type(core_type(G), core_type(TG))))
     
     for g in G_list
         N -= 2 * real(dot_L2(g, G))

@@ -12,9 +12,9 @@
         - H(t)g = apply_op(t, g) for any gaussian wave packet g
 =#
 function schrodinger_gaussian_residual(a::T, b::T, Lt::Int,
-                        Ginit::AbstractVector{<:AbstractWavePacket1D},
+                        Ginit::AbstractVector,
                         apply_op,
-                        Gf::AbstractMatrix{<:AbstractWavePacket1D}, Gg::AbstractMatrix{<:AbstractWavePacket1D},
+                        Gf::AbstractMatrix, Gg::AbstractMatrix,
                         X::AbstractVector{T}) where{T<:Real}
     
     if length(X) != gaussian_param_size * Lt
@@ -120,10 +120,10 @@ function SchGaussianGradientCFG(Lt::Int, X::AbstractVector{T}) where{T<:Real}
     return SchGaussianGradientCFG(Y, fg, cfg0, cfg_gradient)
 end
 function schrodinger_gaussian_gradient!(∇::AbstractVector{T},
-                            a::T, b::T, Lt::Int, Ginit::AbstractVector{<:AbstractWavePacket1D},
+                            a::T, b::T, Lt::Int, Ginit::AbstractVector,
                             apply_op,
-                            Gf::Matrix{<:AbstractWavePacket1D},
-                            Gg::Matrix{<:AbstractWavePacket1D},
+                            Gf::Matrix,
+                            Gg::Matrix,
                             X::AbstractVector{T},
                             cfg=SchGaussianGradientCFG(Lt, X)) where{T<:Real}
     
@@ -196,9 +196,9 @@ end
     Returns ∇, A
 =#
 function schrodinger_gaussian_gradient_and_metric!(∇::AbstractVector{T}, A::BlockBandedMatrix{T},
-                                        a::T, b::T, Lt::Int, Ginit::AbstractVector{<:AbstractWavePacket1D}, apply_op,
-                                        Gf::Matrix{<:AbstractWavePacket1D},
-                                        Gg::Matrix{<:AbstractWavePacket1D},
+                                        a::T, b::T, Lt::Int, Ginit::AbstractVector, apply_op,
+                                        Gf::AbstractMatrix,
+                                        Gg::AbstractMatrix,
                                         X::AbstractVector{T},
                                         cfg=SchGaussianGradientAndMetricCFG(Lt, X)) where{T<:Real}
     

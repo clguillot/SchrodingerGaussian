@@ -9,10 +9,10 @@ end
 #
 function schrodinger_gaussian_linesearch(U::Vector{T}, ∇::Vector{T}, X::Vector{T}, d::Vector{T},
                                         a::T, b::T, Lt::Int,
-                                        G0::AbstractVector{<:AbstractWavePacket1D},
+                                        G0::AbstractVector,
                                         apply_op,
-                                        Gf::AbstractMatrix{<:AbstractWavePacket1D},
-                                        Gg::AbstractMatrix{<:AbstractWavePacket1D},
+                                        Gf::AbstractMatrix,
+                                        Gg::AbstractMatrix,
                                         cfg::SchGaussianGradientCFG=SchGaussianGradientCFG(Lt, U)) where{T<:Real}
     function ϕ(α)
         @. U = X + α * d
@@ -86,8 +86,8 @@ end
 =#
 function schrodinger_best_gaussian(a::T, b::T, Lt::Int, G0::AbstractVector{<:AbstractWavePacket1D},
                                         apply_op,
-                                        Gf::AbstractMatrix{<:AbstractWavePacket1D},
-                                        Gg::AbstractMatrix{<:AbstractWavePacket1D},
+                                        Gf::AbstractMatrix,
+                                        Gg::AbstractMatrix,
                                         abs_tol::T,
                                         cfg=SchBestGaussianCFG(T, Lt);
                                         maxiter::Int = 1000,

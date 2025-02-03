@@ -6,8 +6,8 @@
         - H(t)g = apply_op(t, g) for any gaussian wave packet g
 =#
 function schrodinger_gaussian_cross_residual(h::T,
-                                        G0::AbstractWavePacket, G1::AbstractWavePacket,
-                                        HG0::AbstractWavePacket, HG1::AbstractWavePacket) where{T<:Real}
+                                        G0, G1,
+                                        HG0, HG1) where{T<:Real}
     # 2*Re<i∂ₜG0,i∂ₜG1>
     S = 2 * fe_k_factor(h, 0, 1) * real(dot_L2(G0, G1))
 
@@ -35,7 +35,7 @@ end
         - HG0 is obtained by unpacking HX0
         - H(t)g = apply_op(t, g) for any gaussian wave packet g
 =#
-function schrodinger_gaussian_square_residual(h::T, G0::AbstractWavePacket, HG0::AbstractWavePacket,
+function schrodinger_gaussian_square_residual(h::T, G0, HG0,
                                         ::Val{K}=Val(0)) where{T<:Real, K}
     
     # |i∂ₜ|^2
@@ -68,15 +68,15 @@ end
         - H(t)g = apply_op(t, g) for any gaussian wave packet g
 =#
 function schrodinger_gaussian_linear_residual(h::T,
-                                        G0::AbstractWavePacket, HG0::AbstractWavePacket,
-                                        Wf::AbstractVector{<:AbstractWavePacket},
-                                        Wg::AbstractVector{<:AbstractWavePacket},
+                                        G0, HG0,
+                                        Wf::AbstractVector,
+                                        Wg::AbstractVector,
                                         ::Val{K1}, ::Val{K2}=Val(0)) where{T<:Real, K1, K2}
     
     s1 = sign(K1)
     s2 = sign(K2)
 
-    S = zero(real(promote_type(T, eltype(G0), eltype(HG0), eltype(eltype(Wf)), eltype(eltype(Wg)))))
+    S = zero(real(promote_type(T, core_type(G0), core_type(HG0), core_type(eltype(Wf)), core_type(eltype(Wg)))))
 
     if abs(s1 - s2) <= 1
         # -2*Re<Wf(t),(i∂ₜ-H(t))G0>
@@ -133,8 +133,8 @@ end
 =#
 function schrodinger_gaussian_elementary_residual(a::T, b::T, Lt::Int, k::Int,
                                         apply_op,
-                                        Wf::AbstractMatrix{<:AbstractWavePacket},
-                                        Wg::AbstractMatrix{<:AbstractWavePacket},
+                                        Wf::AbstractMatrix,
+                                        Wg::AbstractMatrix,
                                         X::AbstractVector{T1}) where{T<:Real, T1<:Real}
     if !(1 <= k <= Lt-1)
         throw(BoundsError("k is equal to $k but must be between 1 and Lt-1=$(Lt-1)"))
@@ -191,8 +191,8 @@ function SchGaussianLocalGradientCFG(Lt::Int, X::AbstractVector{T}) where{T<:Rea
 end
 function schrodinger_gaussian_residual_local_gradient!(∇::AbstractVector{T}, a::T, b::T, Lt::Int, k::Int,
                                         apply_op::Fop,
-                                        Gf::AbstractMatrix{<:AbstractWavePacket},
-                                        Gg::AbstractMatrix{<:AbstractWavePacket},
+                                        Gf::AbstractMatrix,
+                                        Gg::AbstractMatrix,
                                         X::AbstractVector{T},
                                         cfg=SchGaussianLocalGradientCFG(Lt, X)) where{T<:Real, Fop}
     if !(1 <= k <= Lt)
