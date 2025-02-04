@@ -264,7 +264,7 @@ function schrodinger_gaussian_residual_local_gradient!(∇::AbstractVector{T}, a
 
             # Linear part
             @unroll for s=-1:1
-                S += @views 2 * real(schrodinger_gaussian_linear_residual(h, G_middle, HG_middle, Gf[:, k+s], Gg[:, k+s], Val(s), Val(0)))
+                S -= @views 2 * real(schrodinger_gaussian_linear_residual(h, G_middle, HG_middle, Gf[:, k+s], Gg[:, k+s], Val(s), Val(0)))
             end
 
             return S
