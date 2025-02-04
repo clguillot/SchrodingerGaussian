@@ -3,7 +3,6 @@
         2*real ∫₍₀,ₕ₎ ds <i∂ₜζ₀(s)G0-ζ₀(s)HG0, i∂ₜζ₁(s)G1-ζ₁(s)HG1>
     where
         - The (ζₖ)ₖ are the P1 finite element functions such that ζₖ(lh)=δₖₗ
-        - H(t)g = apply_op(t, g) for any gaussian wave packet g
 =#
 function schrodinger_gaussian_cross_residual(h::T,
                                         G0, G1,
@@ -35,8 +34,8 @@ end
         - HG0 is obtained by unpacking HX0
         - H(t)g = apply_op(t, g) for any gaussian wave packet g
 =#
-function schrodinger_gaussian_square_residual(h::T, G0, HG0,
-                                        ::Val{K}=Val(0)) where{T<:Real, K}
+function schrodinger_gaussian_square_residual(h::Real, G0, HG0,
+                                        ::Val{K}=Val(0)) where{K}
     
     # |i∂ₜ|^2
     S = fe_k_factor(h, 0, 0) * norm2_L2(G0)
@@ -58,9 +57,9 @@ end
 
 #=
     Computes the local residual
-        -2*real ∫₍₋ₕ,ₕ₎ ds <∑ᵣζₛ'(s)Wg[r] + ∑ᵣζₛ(s)Wf[r],(i∂ₜ-H(t))ζ₀(s)G0>   if K2 == 0
-        -2*real ∫₍₀,ₕ₎ ds <∑ᵣζₛ'(s)Wg[r] + ∑ᵣζₛ(s)Wf[r],(i∂ₜ-H(t))ζ₀(s)G0>   if K2 > 0
-        -2*real ∫₍₋ₕ,₀₎ ds <∑ᵣζₛ'(s)Wg[r] + ∑ᵣζₛ(s)Wf[r],(i∂ₜ-H(t))ζ₀(s)G0>   if K2 < 0
+        ∫₍₋ₕ,ₕ₎ ds <∑ᵣζₛ'(s)Wg[r] + ∑ᵣζₛ(s)Wf[r],(i∂ₜ-H(t))ζ₀(s)G0>   if K2 == 0
+        ∫₍₀,ₕ₎ ds <∑ᵣζₛ'(s)Wg[r] + ∑ᵣζₛ(s)Wf[r],(i∂ₜ-H(t))ζ₀(s)G0>   if K2 > 0
+        ∫₍₋ₕ,₀₎ ds <∑ᵣζₛ'(s)Wg[r] + ∑ᵣζₛ(s)Wf[r],(i∂ₜ-H(t))ζ₀(s)G0>   if K2 < 0
     where
         - s = sign(K1)
         - The (ζₖ)ₖ are the P1 finite element functions such that ζₖ(lh)=δₖₗ
@@ -68,47 +67,47 @@ end
         - H(t)g = apply_op(t, g) for any gaussian wave packet g
 =#
 function schrodinger_gaussian_linear_residual(h::T,
-                                        G0, HG0,
-                                        Wf, Wg,
+                                        G0, HG0, Wf, Wg,
                                         ::Val{K1}, ::Val{K2}=Val(0)) where{T<:Real, K1, K2}
     
     s1 = sign(K1)
     s2 = sign(K2)
 
-    S = zero(real(promote_type(T, core_type(G0), core_type(HG0), core_type(eltype(Wf)), core_type(eltype(Wg)))))
+    TS = real(promote_type(T, core_type(G0), core_type(HG0), core_type(eltype(Wf)), core_type(eltype(Wg))))
+    S = zero(Complex{TS})
 
     if abs(s1 - s2) <= 1
-        # -2*Re<Wf(t),(i∂ₜ-H(t))G0>
+        # <Wf(t),(i∂ₜ-H(t))G0>
         for f in Wf
-            # -2*Re<Wf(t),i∂ₜG0> = 2*Im<Wf(t),∂ₜG0>
+            # <Wf(t),i∂ₜG0> = i<Wf(t),∂ₜG0>
             if s1 == 0 && s2 != 0
-                S += 2 * s2 * fe_l_half_factor(h) * imag(dot_L2(f, G0))
+                S += im * fe_l_factor(h, 0, s2) * dot_L2(f, G0)
             elseif s1 != 0
-                S += 2 * fe_l_factor(h, 0, s1) * imag(dot_L2(f, G0))
+                S += im * fe_l_factor(h, 0, s1) * dot_L2(f, G0)
             end
 
-            # 2*Re<Wf(t),H(t)G0>
+            # <Wf(t),HG0>
             if s1 == 0 && s2 != 0
-                S += fe_m_factor(h, 0, s1) * real(dot_L2(f, HG0))
+                S += fe_m_factor(h, 0, 0) / 2 * dot_L2(f, HG0)
             else
-                S += 2 * fe_m_factor(h, 0, s1) * real(dot_L2(f, HG0))
+                S += fe_m_factor(h, 0, s1) * dot_L2(f, HG0)
             end
         end
 
-        #-2*Re<Wg(t),(i∂ₜ-H(t))G0>
+        # <Wg(t),(i∂ₜ-H(t))G0>
         for g in Wg
-            # -2*Re<Wg(t),i∂ₜG0> = 2*Im<Wg(t),∂ₜG0>
+            # <Wg(t),i∂ₜG0> = i<Wg(t),∂ₜG0>
             if s1 == 0 && s2 != 0
-                S += fe_k_factor(h, s1, 0) * imag(dot_L2(g, G0))
+                S += im * fe_k_factor(h, 0, 0) / 2 * dot_L2(g, G0)
             else
-                S += 2 * fe_k_factor(h, s1, 0) * imag(dot_L2(g, G0))
+                S += im * fe_k_factor(h, s1, 0) * dot_L2(g, G0)
             end
 
-            # 2*Re<Wg(t),H(t)G0>
+            # <Wg(t),H(t)G0>
             if s1 == 0 && s2 != 0
-                S += 2 * s2 * fe_l_half_factor(h) * real(dot_L2(g, HG0))
+                S += fe_l_factor(h, 0, s2) * dot_L2(g, HG0)
             elseif s1 != 0
-                S += 2 * fe_l_factor(h, s1, 0) * real(dot_L2(g, HG0))
+                S += fe_l_factor(h, s1, 0) * dot_L2(g, HG0)
             end
         end
     end
@@ -160,10 +159,10 @@ function schrodinger_gaussian_elementary_residual(a::T, b::T, Lt::Int, k::Int,
     Wf1 = @view Wf[:, k+1]
     Wg0 = @view Wg[:, k]
     Wg1 = @view Wg[:, k+1]
-    S += schrodinger_gaussian_linear_residual(h, G0, HG0, Wf0, Wg0, Val(0), Val(1)) +
-            schrodinger_gaussian_linear_residual(h, G0, HG0, Wf1, Wg1, Val(1), Val(1))
-    S += schrodinger_gaussian_linear_residual(h, G1, HG1, Wf0, Wg0, Val(-1), Val(-1)) +
-            schrodinger_gaussian_linear_residual(h, G1, HG1, Wf1, Wg1, Val(0), Val(-1))
+    S -= 2 * real(schrodinger_gaussian_linear_residual(h, G0, HG0, Wf0, Wg0, Val(0), Val(1)) +
+            schrodinger_gaussian_linear_residual(h, G0, HG0, Wf1, Wg1, Val(1), Val(1)))
+    S -= 2 * real(schrodinger_gaussian_linear_residual(h, G1, HG1, Wf0, Wg0, Val(-1), Val(-1)) +
+            schrodinger_gaussian_linear_residual(h, G1, HG1, Wf1, Wg1, Val(0), Val(-1)))
     
     return S
 end
@@ -219,7 +218,7 @@ function schrodinger_gaussian_residual_local_gradient!(∇::AbstractVector{T}, a
             
             # Linear part
             @unroll for s=0:1
-                S += @views schrodinger_gaussian_linear_residual(h, G, HG, Gf[:, 1+s], Gg[:, 1+s], Val(s), Val(1))
+                S -= @views 2 * real(schrodinger_gaussian_linear_residual(h, G, HG, Gf[:, 1+s], Gg[:, 1+s], Val(s), Val(1)))
             end
 
             return S
@@ -241,7 +240,7 @@ function schrodinger_gaussian_residual_local_gradient!(∇::AbstractVector{T}, a
             
             # Linear part
             @unroll for s=-1:0
-                S += @views schrodinger_gaussian_linear_residual(h, G, HG, Gf[:, end+s], Gg[:, end+s], Val(s), Val(-1))
+                S -= @views 2 * real(schrodinger_gaussian_linear_residual(h, G, HG, Gf[:, end+s], Gg[:, end+s], Val(s), Val(-1)))
             end
 
             return S
@@ -265,7 +264,7 @@ function schrodinger_gaussian_residual_local_gradient!(∇::AbstractVector{T}, a
 
             # Linear part
             @unroll for s=-1:1
-                S += @views schrodinger_gaussian_linear_residual(h, G_middle, HG_middle, Gf[:, k+s], Gg[:, k+s], Val(s), Val(0))
+                S += @views 2 * real(schrodinger_gaussian_linear_residual(h, G_middle, HG_middle, Gf[:, k+s], Gg[:, k+s], Val(s), Val(0)))
             end
 
             return S
