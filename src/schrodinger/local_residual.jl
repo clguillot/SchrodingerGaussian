@@ -30,9 +30,6 @@ end
         ∫₍₋ₕ,₀₎ ds |i∂ₜζ₀(s)G0-ζ₀(s)HG0|^2    if K < 0
     where
         - The (ζₖ)ₖ are the P1 finite element functions such that ζₖ(lh)=δₖₗ
-        - G0 is obtained by unpacking X0
-        - HG0 is obtained by unpacking HX0
-        - H(t)g = apply_op(t, g) for any gaussian wave packet g
 =#
 function schrodinger_gaussian_square_residual(h::Real, G0, HG0,
                                         ::Val{K}=Val(0)) where{K}
@@ -63,8 +60,6 @@ end
     where
         - s = sign(K1)
         - The (ζₖ)ₖ are the P1 finite element functions such that ζₖ(lh)=δₖₗ
-        - G0 is obtained by unpacking X0
-        - H(t)g = apply_op(t, g) for any gaussian wave packet g
 =#
 function schrodinger_gaussian_linear_residual(h::T,
                                         G0, HG0, Wf, Wg,
