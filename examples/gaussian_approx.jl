@@ -4,22 +4,20 @@ using HermiteWavePackets
 function test_gaussian_approx()
 
     # Real gaussian
-    λ = complex(1.0, 0.2)
-    z = complex(1.23, -2.7)
-    q = -2.3
-    p = 5.6
-    G = GaussianWavePacket1D(λ, z, q, p)
+    G1 = GaussianWavePacket1D(complex(1.0), complex(1.0), -1.0, 1.5)
+    G2 = GaussianWavePacket1D(complex(1.0), complex(1.0), 0.0, 0.6)
+    G3 = GaussianWavePacket1D(complex(1.0), complex(1.0), 1.0, -2.3)
     
     # Perturbation
-    δ = 0.01
-    λ_init = λ + complex(rand() * δ, rand() * δ)
-    z_init = z + complex(rand() * δ, rand() * δ)
-    q_init = q + rand() * δ
-    p_init = p + rand() * δ
-    G_init = GaussianWavePacket1D(λ_init, z_init, q_init, p_init)
+    # λ_init = complex(rand(), rand())
+    # z_init = complex(rand(), rand())
+    # q_init = 2 * rand() - 1
+    # p_init = 2 * rand() - 1
+    # G_init = GaussianWavePacket1D(λ_init, z_init, q_init, p_init)
+    G_init = -10.0 * G2
 
-    G_approx = gaussian_approx([G], G_init; rel_tol=1e-12, verbose=true)
+    G_approx = gaussian_approx([G1, G2, G3], G_init; rel_tol=1e-12, verbose=true)
 
-    display(G)
+    # display(G)
     display(G_approx)
 end

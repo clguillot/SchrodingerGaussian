@@ -66,6 +66,11 @@ function gaussian_approx(G_list::AbstractVector{<:GaussianWavePacket1D},
 
         verbose && println("Iteration $iter :")
 
+        # Global optimization with respect to the linear parameter
+        G0 = unpack_gaussian_parameters(X)
+        λ = dot_L2(G0, G_list) / norm2_L2(G0)
+        pack_gaussian_parameters!(X, λ * G0)
+
         ∇, A = gaussian_approx_gradient_and_metric!(cfg.∇, cfg.A, G_list, X, cfg.cfg)
         chA = cholesky(Symmetric(SMatrix{gaussian_param_size, gaussian_param_size}(A)))
         Sd = chA \ SVector{gaussian_param_size}(∇)
