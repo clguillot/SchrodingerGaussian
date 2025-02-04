@@ -1,24 +1,24 @@
 #=
     Computes the local residual
-        2*real ∫₍₀,ₕ₎ ds <i∂ₜζ₀(s)G0-ζ₀(s)HG0, i∂ₜζ₁(s)G1-ζ₁(s)HG1>
+        ∫₍₀,ₕ₎ ds <i∂ₜζ₀(s)G0-ζ₀(s)HG0, i∂ₜζ₁(s)G1-ζ₁(s)HG1>
     where
         - The (ζₖ)ₖ are the P1 finite element functions such that ζₖ(lh)=δₖₗ
 =#
 function schrodinger_gaussian_cross_residual(h::T,
                                         G0, G1,
                                         HG0, HG1) where{T<:Real}
-    # 2*Re<i∂ₜG0,i∂ₜG1>
-    S = 2 * fe_k_factor(h, 0, 1) * real(dot_L2(G0, G1))
+    # <i∂ₜG0,i∂ₜG1>
+    S = fe_k_factor(h, 0, 1) * dot_L2(G0, G1)
 
-    # 2*Re<HG0,HG1>
-    S += 2 * fe_m_factor(h, 0, 1) * real(dot_L2(HG0, HG1))
+    # <HG0,HG1>
+    S += fe_m_factor(h, 0, 1) * dot_L2(HG0, HG1)
     
     #=
-        - 2*Re<i∂ₜG0,HG1> - 2*Re<HG0,i∂ₜG1>
-         = - 2*Im<∂ₜG0,HG1> + 2*Im<HG0,∂ₜG1>
+        - <i∂ₜG0,HG1> - <HG0,i∂ₜG1>
+         = i<∂ₜG0,HG1> - i<HG0,∂ₜG1>
     =#
-    S += -2 * fe_l_factor(h, 0, 1) * imag(dot_L2(G0, HG1))
-    S += 2 * fe_l_factor(h, 1, 0) * imag(dot_L2(HG0, G1))
+    S += im * fe_l_factor(h, 0, 1) * dot_L2(G0, HG1)
+    S -= im * fe_l_factor(h, 1, 0) * dot_L2(HG0, G1)
 
     return S
 end
@@ -152,7 +152,7 @@ function schrodinger_gaussian_elementary_residual(a::T, b::T, Lt::Int, k::Int,
     # Quadratic part
     S = schrodinger_gaussian_square_residual(h, G0, HG0, Val(1)) +
             schrodinger_gaussian_square_residual(h, G1, HG1, Val(-1))
-    S += schrodinger_gaussian_cross_residual(h, G0, G1, HG0, HG1)
+    S += 2 * real(schrodinger_gaussian_cross_residual(h, G0, G1, HG0, HG1))
 
     # Linear part
     Wf0 = @view Wf[:, k]
@@ -214,7 +214,7 @@ function schrodinger_gaussian_residual_local_gradient!(∇::AbstractVector{T}, a
 
             # Quadratic part
             S = schrodinger_gaussian_square_residual(h, G, HG, Val(1))
-            S += schrodinger_gaussian_cross_residual(h, G, G1, HG, HG1)
+            S += 2 * real(schrodinger_gaussian_cross_residual(h, G, G1, HG, HG1))
             
             # Linear part
             @unroll for s=0:1
@@ -236,7 +236,7 @@ function schrodinger_gaussian_residual_local_gradient!(∇::AbstractVector{T}, a
 
             # Quadratic part
             S = schrodinger_gaussian_square_residual(h, G, HG, Val(-1))
-            S += schrodinger_gaussian_cross_residual(h, Gmm1, G, HGmm1, HG)
+            S += 2 * real(schrodinger_gaussian_cross_residual(h, Gmm1, G, HGmm1, HG))
             
             # Linear part
             @unroll for s=-1:0
@@ -259,8 +259,8 @@ function schrodinger_gaussian_residual_local_gradient!(∇::AbstractVector{T}, a
 
             # Quadratic part
             S = schrodinger_gaussian_square_residual(h, G_middle, HG_middle, Val(0))
-            S += schrodinger_gaussian_cross_residual(h, Gm1, G_middle, HGm1, HG_middle)
-            S += schrodinger_gaussian_cross_residual(h, G_middle, Gp1, HG_middle, HGp1)
+            S += 2 * real(schrodinger_gaussian_cross_residual(h, Gm1, G_middle, HGm1, HG_middle))
+            S += 2 * real(schrodinger_gaussian_cross_residual(h, G_middle, Gp1, HG_middle, HGp1))
 
             # Linear part
             @unroll for s=-1:1
