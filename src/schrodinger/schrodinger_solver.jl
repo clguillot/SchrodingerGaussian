@@ -9,10 +9,9 @@ end
 #
 function schrodinger_gaussian_linesearch(U::Vector{T}, ∇::Vector{T}, X::Vector{T}, d::Vector{T},
                                         a::T, b::T, Lt::Int,
-                                        G0::AbstractVector,
+                                        G0::AbstractVector{<:AbstractWavePacket},
                                         apply_op,
-                                        Gf::AbstractMatrix,
-                                        Gg::AbstractMatrix,
+                                        Gf, Gg,
                                         cfg::SchGaussianGradientCFG=SchGaussianGradientCFG(Lt, U)) where{T<:Real}
     function ϕ(α)
         @. U = X + α * d
@@ -86,8 +85,7 @@ end
 =#
 function schrodinger_best_gaussian(a::T, b::T, Lt::Int, G0::AbstractVector{<:AbstractWavePacket1D},
                                         apply_op,
-                                        Gf::AbstractMatrix,
-                                        Gg::AbstractMatrix,
+                                        Gf, Gg,
                                         abs_tol::T,
                                         cfg=SchBestGaussianCFG(T, Lt);
                                         maxiter::Int = 1000,
@@ -100,7 +98,7 @@ function schrodinger_best_gaussian(a::T, b::T, Lt::Int, G0::AbstractVector{<:Abs
     X = cfg.X
 
     verbose && println("Computing an approximation of the initial condition")
-    @time Ginit = gaussian_approx(G0, unpack_gaussian_parameters(rand(T, gaussian_param_size)); verbose=verbose, maxiter=100*maxiter)
+    Ginit = gaussian_approx(G0, unpack_gaussian_parameters(rand(T, gaussian_param_size)); verbose=verbose, maxiter=100*maxiter)
     
     # Fills X with the approximation of the initial condition
     for k=1:Lt
@@ -121,7 +119,7 @@ function schrodinger_best_gaussian(a::T, b::T, Lt::Int, G0::AbstractVector{<:Abs
     # Global space-time iterations
     iter = 0
     E0 = schrodinger_gaussian_residual(a, b, Lt, G0, apply_op, Gf, Gg, X)
-    @time while iter < maxiter
+    while iter < maxiter
         iter += 1
         verbose && println("Iteration $iter on $maxiter :")
 
@@ -144,7 +142,7 @@ function schrodinger_best_gaussian(a::T, b::T, Lt::Int, G0::AbstractVector{<:Abs
         end
     end
 
-    println("Number of iterations : $iter")
+    verbose && println("Number of iterations : $iter")
 
     #Unpacking the result
     G = Vector{GT}(undef, Lt)

@@ -69,8 +69,7 @@ end
 =#
 function schrodinger_gaussian_linear_residual(h::T,
                                         G0, HG0,
-                                        Wf::AbstractVector,
-                                        Wg::AbstractVector,
+                                        Wf, Wg,
                                         ::Val{K1}, ::Val{K2}=Val(0)) where{T<:Real, K1, K2}
     
     s1 = sign(K1)
@@ -133,8 +132,7 @@ end
 =#
 function schrodinger_gaussian_elementary_residual(a::T, b::T, Lt::Int, k::Int,
                                         apply_op,
-                                        Wf::AbstractMatrix,
-                                        Wg::AbstractMatrix,
+                                        Wf, Wg,
                                         X::AbstractVector{T1}) where{T<:Real, T1<:Real}
     if !(1 <= k <= Lt-1)
         throw(BoundsError("k is equal to $k but must be between 1 and Lt-1=$(Lt-1)"))
@@ -191,8 +189,7 @@ function SchGaussianLocalGradientCFG(Lt::Int, X::AbstractVector{T}) where{T<:Rea
 end
 function schrodinger_gaussian_residual_local_gradient!(∇::AbstractVector{T}, a::T, b::T, Lt::Int, k::Int,
                                         apply_op::Fop,
-                                        Gf::AbstractMatrix,
-                                        Gg::AbstractMatrix,
+                                        Gf, Gg,
                                         X::AbstractVector{T},
                                         cfg=SchGaussianLocalGradientCFG(Lt, X)) where{T<:Real, Fop}
     if !(1 <= k <= Lt)
@@ -337,7 +334,7 @@ end
         - H(t)g = apply_op(t, g) for any gaussian wave packet g
 =#
 function schrodinger_gaussian_local_residual_linear_part(t::T, h::T, apply_op,
-            Gf0::AbstractVector{<:GaussianWavePacket1D}, Gf1::AbstractVector{<:GaussianWavePacket1D},
+            Gf0, Gf1,
             X::AbstractVector{T1},
             ::Val{check_len}=Val(true)) where{T<:Real, T1<:Real, check_len}
     

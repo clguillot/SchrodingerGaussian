@@ -65,19 +65,19 @@ function test_schrodinger_greedy(a::T, b::T, Lt, nb_terms::Int, newton_nb_iter::
             display(p)
             # savefig("norm.pdf")
 
-            p = plot()
-            for k in [Lt]
-                t = a + (k-1) * (b-a)/(Lt-1)
-                G = zeros(GT, nb_terms)
-                for j=1:nb_terms
-                    G[j] = inv_fourier(unitary_product(2*t, fourier(G_list[j, k])))
-                end
-                fgx = G.(x_list)
-                fx = abs2.(fgx)
-                plot!(p, x_list, fx; label=LaTeXString("\$|ψ($(round(Int, t)), x)|^2\$"), ylims=(-0.4, 2.0))
-            end
-            plot!(p, x_list, v.(x_list); label=LaTeXString("\$v(x)\$"))
-            display(p)
+            # p = plot()
+            # for k in [Lt]
+            #     t = a + (k-1) * (b-a)/(Lt-1)
+            #     G = zeros(GT, nb_terms)
+            #     for j=1:nb_terms
+            #         G[j] = inv_fourier(unitary_product(2*t, fourier(G_list[j, k])))
+            #     end
+            #     fgx = G.(x_list)
+            #     fx = abs2.(fgx)
+            #     plot!(p, x_list, fx; label=LaTeXString("\$|ψ($(round(Int, t)), x)|^2\$"), ylims=(-0.4, 2.0))
+            # end
+            # plot!(p, x_list, v.(x_list); label=LaTeXString("\$v(x)\$"))
+            # display(p)
             # savefig("state.pdf")
         end
 

@@ -2,7 +2,7 @@
 
 julia_version = "1.11.1"
 manifest_format = "2.0"
-project_hash = "2f1d3ff8858f678797243f1da5a79daae6bb582b"
+project_hash = "5920d1113662e157a998089ebaa62ce5eb716996"
 
 [[deps.AbstractTrees]]
 git-tree-sha1 = "2d9c9a55f9c93e8887ad391fbae72f8ef55e1177"
@@ -442,6 +442,12 @@ version = "1.4.3"
 deps = ["Unicode"]
 uuid = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 version = "1.11.0"
+
+[[deps.ProgressBars]]
+deps = ["Printf"]
+git-tree-sha1 = "b437cdb0385ed38312d91d9c00c20f3798b30256"
+uuid = "49802e3a-d2f1-5c88-81d8-b72133a6f568"
+version = "1.5.1"
 
 [[deps.REPL]]
 deps = ["InteractiveUtils", "Markdown", "Sockets", "StyledStrings", "Unicode"]

@@ -46,7 +46,7 @@ function schrodinger_gaussian_greedy(a::T, b::T, Lt::Int, G0::AbstractVector{<:A
 
     for iter=1:nb_terms
         verbose && println("Computing term $iter...")
-        @time G[iter, :], _ = schrodinger_best_gaussian(a, b, Lt, G0_[1 : n0 + iter - 1], apply_op,
+        G[iter, :], _ = schrodinger_best_gaussian(a, b, Lt, G0_[1 : n0 + iter - 1], apply_op,
                 Gf_[1:iter-1, :], Gg_[1:iter-1, :], abs_tol, cfg;
                 maxiter=maxiter, verbose=fullverbose)
         
@@ -68,7 +68,7 @@ function schrodinger_gaussian_greedy(a::T, b::T, Lt::Int, G0::AbstractVector{<:A
         # Λ[1:iter] = T(-0.5) .* (GramMatrix[1:iter, 1:iter] \ conj.(F[1:iter]))
         Λ[1:iter] = ones(iter)
         res = real(dot(Λ[1:iter], GramMatrix[1:iter, 1:iter], Λ[1:iter]) + dot(F[1:iter], Λ[1:iter]) + C0)
-        println("Residual = $res")
+        verbose && println("Residual = $res")
         res_list[iter] = res
         # println("Λ = ", Λ[1:iter])
 

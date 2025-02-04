@@ -14,7 +14,7 @@
 function schrodinger_gaussian_residual(a::T, b::T, Lt::Int,
                         Ginit::AbstractVector,
                         apply_op,
-                        Gf::AbstractMatrix, Gg::AbstractMatrix,
+                        Gf, Gg,
                         X::AbstractVector{T}) where{T<:Real}
     
     if length(X) != gaussian_param_size * Lt
@@ -72,7 +72,7 @@ end
 =#
 function schrodinger_gaussian_residual_linear_part(a::T, b::T, Lt::Int,
                         Ginit::AbstractVector{<:GaussianWavePacket1D}, apply_op,
-                        Gf::AbstractMatrix{<:GaussianWavePacket1D},
+                        Gf,
                         X::AbstractVector{T1}) where{T<:Real, T1<:Real}
     
     if length(X) != gaussian_param_size * Lt
@@ -122,8 +122,7 @@ end
 function schrodinger_gaussian_gradient!(∇::AbstractVector{T},
                             a::T, b::T, Lt::Int, Ginit::AbstractVector,
                             apply_op,
-                            Gf::Matrix,
-                            Gg::Matrix,
+                            Gf, Gg,
                             X::AbstractVector{T},
                             cfg=SchGaussianGradientCFG(Lt, X)) where{T<:Real}
     
@@ -197,8 +196,7 @@ end
 =#
 function schrodinger_gaussian_gradient_and_metric!(∇::AbstractVector{T}, A::BlockBandedMatrix{T},
                                         a::T, b::T, Lt::Int, Ginit::AbstractVector, apply_op,
-                                        Gf::AbstractMatrix,
-                                        Gg::AbstractMatrix,
+                                        Gf, Gg,
                                         X::AbstractVector{T},
                                         cfg=SchGaussianGradientAndMetricCFG(Lt, X)) where{T<:Real}
     
