@@ -38,10 +38,10 @@ function schrodinger_gaussian_cross_residual(h::Real, G0, G1, HG0, HG1,
             S -= im * fe_l_factor(h, s2, s1) * dot_L2(HG0, G1)
         elseif s1 == 0
             S += im * fe_l_factor(h, 0, 1) * dot_L2(G0, HG1)
-            S -= im * fe_l_factor(h, 1, 0) * dot_L2(HG0, G1)
+            S -= im * fe_l_factor(h, 0, 1) * dot_L2(HG0, G1)
         elseif s1 == 1
             S += im * fe_l_factor(h, 1, 0) * dot_L2(G0, HG1)
-            S -= im * fe_l_factor(h, 0, 1) * dot_L2(HG0, G1)
+            S -= im * fe_l_factor(h, 1, 0) * dot_L2(HG0, G1)
         end
     end
 
