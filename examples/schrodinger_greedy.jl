@@ -34,7 +34,7 @@ function test_schrodinger_greedy(a::T, b::T, Lt, nb_terms::Int, newton_nb_iter::
         # Gv2 = Gaussian1D(1.0, 1.0, -2.0)
         # v(x) = Gv1(x) + Gv2(x)
 
-        G_list, res_list = schrodinger_gaussian_greedy(a, b, Lt, G0, apply_op, nb_terms; maxiter=newton_nb_iter, verbose=true, fullverbose=true)
+        G_list, res_list = schrodinger_gaussian_greedy(a, b, Lt, G0, apply_op, nb_terms; maxiter=newton_nb_iter, verbose=true, fullverbose=false)
 
         if plot_resut
             x_list = T.(-10:0.02:10)
