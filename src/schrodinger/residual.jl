@@ -53,9 +53,11 @@ function schrodinger_gaussian_residual_sesquilinear_part(a::T, b::T, Lt::Int, ap
     #PDE residual
     for k=1:Lt-1
         t = a + (k-1)*h
-        @views Y1 = X1[(k-1)*gaussian_param_size + 1 : (k+1)*gaussian_param_size]
-        @views Y2 = X2[(k-1)*gaussian_param_size + 1 : (k+1)*gaussian_param_size]
-        @views val += schrodinger_gaussian_local_residual_sesquilinear_part(t, h, apply_op, Y1, Y2, Val(false))
+        F0 = unpack_gaussian_parameters(X1, (k-1)*gaussian_param_size + 1)
+        F1 = unpack_gaussian_parameters(X1, k*gaussian_param_size + 1)
+        G0 = unpack_gaussian_parameters(X2, (k-1)*gaussian_param_size + 1)
+        G1 = unpack_gaussian_parameters(X2, k*gaussian_param_size + 1)
+        val += schrodinger_gaussian_local_residual_sesquilinear_part(t, h, apply_op, F0, F1, G0, G1)
     end
     val *= (b - a)
 
