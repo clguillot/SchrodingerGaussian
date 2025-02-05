@@ -106,11 +106,11 @@ function schrodinger_gaussian_linear_residual(h::T,
                 S += im * fe_l_factor(h, 0, s1) * dot_L2(f, G0)
             end
 
-            # <Wf(t),HG0>
+            # -<Wf(t),HG0>
             if s1 == 0 && s2 != 0
-                S += fe_m_factor(h, 0, 0) / 2 * dot_L2(f, HG0)
+                S -= fe_m_factor(h, 0, 0) / 2 * dot_L2(f, HG0)
             else
-                S += fe_m_factor(h, 0, s1) * dot_L2(f, HG0)
+                S -= fe_m_factor(h, 0, s1) * dot_L2(f, HG0)
             end
         end
 
@@ -123,11 +123,11 @@ function schrodinger_gaussian_linear_residual(h::T,
                 S += im * fe_k_factor(h, s1, 0) * dot_L2(g, G0)
             end
 
-            # <Wg(t),H(t)G0>
+            # -<Wg(t),H(t)G0>
             if s1 == 0 && s2 != 0
-                S += fe_l_factor(h, 0, s2) * dot_L2(g, HG0)
+                S -= fe_l_factor(h, 0, s2) * dot_L2(g, HG0)
             elseif s1 != 0
-                S += fe_l_factor(h, s1, 0) * dot_L2(g, HG0)
+                S -= fe_l_factor(h, s1, 0) * dot_L2(g, HG0)
             end
         end
     end
