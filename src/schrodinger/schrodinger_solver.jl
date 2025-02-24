@@ -47,7 +47,7 @@ function schrodinger_gaussian_linesearch(U::Vector{T}, ∇::Vector{T}, X::Vector
     return α_opt, ϕ_0
 end
 
-struct SchBestGaussianCFG{T, CG, CM, Cchol}
+mutable struct SchBestGaussianCFG{T, CG, CM, Cchol}
     X::Vector{T}
     U::Vector{T}
     ∇::Vector{T}
