@@ -37,7 +37,7 @@ function GaussianApproxGradientCFG(::Type{Gtype}, X::Vector{T}) where{Gtype<:Abs
         throw(DimensionMismatch("X must be a vector of size $psize but has size $(length(X))"))
     end
 
-    cfg_gradient = ForwardDiff.GradientConfig(x -> nothing, X, ForwardDiff.Chunk(psize))
+    cfg_gradient = ForwardDiff.GradientConfig(x -> nothing, X, ForwardDiff.Chunk(2))
     return GaussianApproxGradientCFG(cfg_gradient)
 end
 #Gradient
