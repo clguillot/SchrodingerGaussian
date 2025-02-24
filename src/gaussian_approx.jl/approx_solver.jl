@@ -1,9 +1,9 @@
 include("metric.jl")
 include("residual.jl")
 
-mutable struct GaussianApproxGradientAndMetricCFG
-    cfg_gradient::GaussianApproxGradientCFG
-    cfg_metric::GaussianApproxMetricTRHessCFG
+mutable struct GaussianApproxGradientAndMetricCFG{CG, CM}
+    cfg_gradient::CG
+    cfg_metric::CM
 end
 function GaussianApproxGradientAndMetricCFG(X::Vector{T}) where{T<:Real}
     cfg_gradient = GaussianApproxGradientCFG(X)
@@ -15,12 +15,15 @@ end
 function gaussian_approx_gradient_and_metric!(∇::Vector{T}, A::Matrix{T},
                                         G_list::AbstractVector{<:GaussianWavePacket1D},
                                         X::Vector{T},
-                                        cfg::GaussianApproxGradientAndMetricCFG=GaussianApproxGradientAndMetricCFG(X)) where{T<:Real}
+                                        cfg=GaussianApproxGradientAndMetricCFG(X)) where{T<:Real}
     if size(A) != (gaussian_param_size, gaussian_param_size)
         throw(DimensionMismatch("A must be a square matrix of size $(gaussian_param_size)x$(gaussian_param_size) but has size $(size(Htr))"))
     end
     if length(X) != gaussian_param_size
         throw(DimensionMismatch("X must be a vector of size $gaussian_param_size but has size $(length(X))"))
+    end
+    if length(∇) != gaussian_param_size
+        throw(DimensionMismatch("∇ must be a vector of size $gaussian_param_size but has size $(length(∇))"))
     end
     
     #Gradient
@@ -32,16 +35,16 @@ function gaussian_approx_gradient_and_metric!(∇::Vector{T}, A::Matrix{T},
     return ∇, A
 end
 
-mutable struct GaussianApproxCFG{T<:Real}
+mutable struct GaussianApproxCFG{T<:Real, CG, CFG}
     U::Vector{T}
     X::Vector{T}
     ∇::Vector{T}
     d::Vector{T}
     A::Matrix{T}
-    cfg_gradient::GaussianApproxGradientCFG
-    cfg::GaussianApproxGradientAndMetricCFG
+    cfg_gradient::CG
+    cfg::CFG
 end
-function GaussianApproxCFG(::Type{T}, G_list::AbstractVector{<:GaussianWavePacket1D}) where{T<:Real}
+function GaussianApproxCFG(::Type{T}, G_list::AbstractVector{<:AbstractWavePacket1D}) where{T<:Real}
     U = zeros(T, gaussian_param_size)
     X = zeros(T, gaussian_param_size)
     ∇ = zeros(T, gaussian_param_size)
@@ -54,7 +57,7 @@ end
 
 function gaussian_approx(G_list::AbstractVector{<:GaussianWavePacket1D},
                             G_initial_guess::GaussianWavePacket1D{Complex{T}, Complex{T}, T, T},
-                            cfg::GaussianApproxCFG=GaussianApproxCFG(T, G_list);
+                            cfg=GaussianApproxCFG(T, G_list);
                             rel_tol::T=sqrt(eps(T)), maxiter::Int=1000, verbose::Bool=false) where{T<:Real}
     abs_tol = rel_tol * gaussian_approx_residual_constant_part(G_list)
     X = pack_gaussian_parameters!(cfg.X, G_initial_guess)
