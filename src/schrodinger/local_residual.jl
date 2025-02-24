@@ -6,8 +6,7 @@
         - s1 = sign(K1)
         - s2 = sign(K2)
 =#
-function schrodinger_gaussian_cross_residual(h::Real, G0, G1, HG0, HG1, 
-                                                ::Val{K1}, ::Val{K2}) where{K1, K2}
+function schrodinger_gaussian_cross_residual(h::Real, G0, G1, HG0, HG1, ::Val{K1}, ::Val{K2}) where{K1, K2}
     s1 = sign(K1)
     s2 = sign(K2)
 
@@ -56,8 +55,7 @@ end
     where
         - The (ζₖ)ₖ are the P1 finite element functions such that ζₖ(lh)=δₖₗ
 =#
-function schrodinger_gaussian_square_residual(h::Real, G0, HG0,
-                                        ::Val{K}=Val(0)) where{K}
+function schrodinger_gaussian_square_residual(h::Real, G0, HG0, ::Val{K}=Val(0)) where{K}
     
     # |i∂ₜ|^2
     S = fe_k_factor(h, 0, 0) * norm2_L2(G0)
@@ -86,8 +84,7 @@ end
         - s = sign(K1)
         - The (ζₖ)ₖ are the P1 finite element functions such that ζₖ(lh)=δₖₗ
 =#
-function schrodinger_gaussian_linear_residual(h::T,
-                                        G0, HG0, Wf, Wg,
+function schrodinger_gaussian_linear_residual(h::T, G0, HG0, Wf, Wg,
                                         ::Val{K1}, ::Val{K2}=Val(0)) where{T<:Real, K1, K2}
     
     s1 = sign(K1)
@@ -150,9 +147,7 @@ end
     - H(t)g = apply_op(t, g) for any gaussian wave packet g
 =#
 function schrodinger_gaussian_elementary_residual(a::T, b::T, Lt::Int, k::Int,
-                                        apply_op,
-                                        Wf, Wg,
-                                        X::AbstractVector{T1}) where{T<:Real, T1<:Real}
+                                        apply_op, Wf, Wg, X::AbstractVector{T1}) where{T<:Real, T1<:Real}
     if !(1 <= k <= Lt-1)
         throw(BoundsError("k is equal to $k but must be between 1 and Lt-1=$(Lt-1)"))
     end
@@ -303,8 +298,7 @@ end
         - G0, G1 are obtained by unpacking respectively X2[1:6] and X2[7:12]
         - H(t)g = apply_op(t, g) for any gaussian wave packet g
 =#
-function schrodinger_gaussian_local_residual_sesquilinear_part(t::T, h::T, apply_op,
-            F0, F1, G0, G1) where{T<:Real}
+function schrodinger_gaussian_local_residual_sesquilinear_part(t::T, h::T, apply_op, F0, F1, G0, G1) where{T<:Real}
     
     
     HF0 = apply_op(t, F0)
@@ -331,8 +325,7 @@ end
         - H(t)g = apply_op(t, g) for any gaussian wave packet g
 =#
 function schrodinger_gaussian_local_residual_linear_part(t::T, h::T, apply_op,
-            Gf0, Gf1,
-            X::AbstractVector{T1},
+            Gf0, Gf1, X::AbstractVector{T1},
             ::Val{check_len}=Val(true)) where{T<:Real, T1<:Real, check_len}
     
     if check_len && length(X) != 2*gaussian_param_size

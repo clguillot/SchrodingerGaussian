@@ -11,11 +11,8 @@
         - For 1≤k≤Lt Gk is obtained by unpacking X[(k-1)*gaussian_param_size + 1 : k*gaussian_param_size]
         - H(t)g = apply_op(t, g) for any gaussian wave packet g
 =#
-function schrodinger_gaussian_residual(a::T, b::T, Lt::Int,
-                        Ginit::AbstractVector,
-                        apply_op,
-                        Gf, Gg,
-                        X::AbstractVector{T}) where{T<:Real}
+function schrodinger_gaussian_residual(a::T, b::T, Lt::Int, Ginit::AbstractVector,
+                apply_op, Gf, Gg, X::AbstractVector{T}) where{T<:Real}
     
     if length(X) != gaussian_param_size * Lt
         throw(DimensionMismatch("X must be a Vector of size $(gaussian_param_size * Lt) but has size $(length(X))"))
@@ -38,7 +35,7 @@ end
 
 =#
 function schrodinger_gaussian_residual_sesquilinear_part(a::T, b::T, Lt::Int, apply_op,
-                        X1::AbstractVector{T1}, X2::AbstractVector{T2}) where{T<:Real, T1<:Real, T2<:Real}
+                X1::AbstractVector{T1}, X2::AbstractVector{T2}) where{T<:Real, T1<:Real, T2<:Real}
     
     if length(X1) != gaussian_param_size * Lt
         throw(DimensionMismatch("X1 must be a Vector of size $(gaussian_param_size * Lt) but has size $(length(X1))"))
@@ -73,9 +70,8 @@ end
 
 =#
 function schrodinger_gaussian_residual_linear_part(a::T, b::T, Lt::Int,
-                        Ginit::AbstractVector{<:GaussianWavePacket1D}, apply_op,
-                        Gf,
-                        X::AbstractVector{T1}) where{T<:Real, T1<:Real}
+                Ginit::AbstractVector{<:GaussianWavePacket1D},
+                apply_op, Gf, X::AbstractVector{T1}) where{T<:Real, T1<:Real}
     
     if length(X) != gaussian_param_size * Lt
         throw(DimensionMismatch("X must be a Vector of size $(gaussian_param_size * Lt) but has size $(length(X))"))
@@ -122,11 +118,9 @@ function SchGaussianGradientCFG(Lt::Int, X::AbstractVector{T}) where{T<:Real}
     return SchGaussianGradientCFG(Y, fg, cfg0, cfg_gradient)
 end
 function schrodinger_gaussian_gradient!(∇::AbstractVector{T},
-                            a::T, b::T, Lt::Int, Ginit::AbstractVector,
-                            apply_op,
-                            Gf, Gg,
-                            X::AbstractVector{T},
-                            cfg=SchGaussianGradientCFG(Lt, X)) where{T<:Real}
+                a::T, b::T, Lt::Int, Ginit::AbstractVector,
+                apply_op, Gf, Gg, X::AbstractVector{T},
+                cfg=SchGaussianGradientCFG(Lt, X)) where{T<:Real}
     
     if length(X) != gaussian_param_size * Lt
         throw(DimensionMismatch("X must be a Vector of size $(gaussian_param_size * Lt) but has size $(length(X))"))
@@ -198,8 +192,7 @@ end
 =#
 function schrodinger_gaussian_gradient_and_metric!(∇::AbstractVector{T}, A::BlockBandedMatrix{T},
                                         a::T, b::T, Lt::Int, Ginit::AbstractVector, apply_op,
-                                        Gf, Gg,
-                                        X::AbstractVector{T},
+                                        Gf, Gg, X::AbstractVector{T},
                                         cfg=SchGaussianGradientAndMetricCFG(Lt, X)) where{T<:Real}
     
     if length(X) != gaussian_param_size * Lt
