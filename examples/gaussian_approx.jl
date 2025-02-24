@@ -16,7 +16,9 @@ function test_gaussian_approx()
     # G_init = GaussianWavePacket1D(λ_init, z_init, q_init, p_init)
     G_init = -10.0 * G2
 
-    G_approx = gaussian_approx([G1, G2, G3], G_init; rel_tol=1e-12, verbose=true)
+    Gtype = GaussianWavePacket1D{ComplexF64, ComplexF64, Float64, Float64}
+
+    G_approx = gaussian_approx(Gtype, Float64, [G1, G2, G3], G_init; rel_tol=1e-12, verbose=true)
 
     # display(G)
     display(G_approx)

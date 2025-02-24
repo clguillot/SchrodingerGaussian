@@ -166,6 +166,18 @@ git-tree-sha1 = "82dc4df2cddfca2c6d285cf37720517cf1b5eeb9"
 uuid = "f68482b8-f384-11e8-15f7-abe071a5a75f"
 version = "2.16.0"
 
+[[deps.Cubature]]
+deps = ["Cubature_jll"]
+git-tree-sha1 = "c3f4b3b38abd7b5c3ccf59adab2568212e7530d3"
+uuid = "667455a9-e2ce-5579-9412-b964f529a492"
+version = "1.5.1"
+
+[[deps.Cubature_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "0fe9efb84e3eb7b14f885a95aaa0ed50c7e839c8"
+uuid = "7bc98958-0e37-5d67-a6ac-a3a19030071a"
+version = "1.0.5+0"
+
 [[deps.Dates]]
 deps = ["Printf"]
 uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
@@ -277,8 +289,8 @@ uuid = "9fa8497b-333b-5362-9e8d-4d0656e87820"
 version = "1.11.0"
 
 [[deps.HermiteWavePackets]]
-deps = ["FastGaussQuadrature", "LinearAlgebra", "SpecialFunctions", "StaticArrays"]
-git-tree-sha1 = "2f0eb841559c647cc6e0cc39742cf7848f7cf480"
+deps = ["Cubature", "FastGaussQuadrature", "LinearAlgebra", "SpecialFunctions", "StaticArrays"]
+git-tree-sha1 = "9fc0509f306409b8b9fdb8409a0eded9d90f381d"
 repo-rev = "main"
 repo-url = "https://github.com/clguillot/HermiteWavePackets"
 uuid = "0c63080c-9546-48d9-913a-8575c4379365"
