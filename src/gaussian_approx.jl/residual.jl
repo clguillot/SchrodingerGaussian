@@ -2,13 +2,9 @@
 #=
     Computes |G_X - ∑G_list[k]|^2 - |∑G_list[k]|^2
 =#
-function gaussian_approx_residual(X::AbstractVector{T}, G_list::AbstractVector{TG}, ::Val{check_len}=Val(true)) where{T<:Real, check_len, TG<:AbstractWavePacket}
-    if check_len && length(X) != gaussian_param_size
-        throw(DimensionMismatch("X must be a vector of size $gaussian_param_size"))
-    end
-
-    G = unpack_gaussian_parameters(X)
-
+function gaussian_approx_residual(G::AbstractWavePacket, G_list::AbstractVector{TG}) where{TG<:AbstractWavePacket}
+    
+    #Initial type
     N = zero(real(promote_type(core_type(G), core_type(TG))))
 
     # Quadratic part
@@ -20,6 +16,14 @@ function gaussian_approx_residual(X::AbstractVector{T}, G_list::AbstractVector{T
     end
 
     return N
+end
+function gaussian_approx_residual(X::AbstractVector{T}, G_list::AbstractVector{TG}) where{T<:Real, TG<:AbstractWavePacket}
+    if length(X) != gaussian_param_size
+        throw(DimensionMismatch("X must be a vector of size $gaussian_param_size"))
+    end
+
+    G = unpack_gaussian_parameters(X)
+    return gaussian_approx_residual(G, G_list)
 end
 
 #=
@@ -67,7 +71,10 @@ end
 function gaussian_approx_gradient!(∇::Vector{T}, G_list::AbstractVector{<:GaussianWavePacket1D},
                                     X::Vector{T},
                                     cfg=GaussianApproxGradientCFG(X)) where{T<:Real}
-    f(Y) = gaussian_approx_residual(Y, G_list, Val(false))
-    ForwardDiff.gradient!(∇, f, X, cfg.cfg_gradient, Val(false))
+    function f(Y)
+        G = unpack_gaussian_parameters(Y)
+        gaussian_approx_residual(G, G_list)
+    end
+    @time ForwardDiff.gradient!(∇, f, X, cfg.cfg_gradient, Val(false))
     return ∇
 end
