@@ -9,6 +9,8 @@ import LinearAlgebra.BLAS
 
 include("apply_op.jl")
 
+include("reference_solution.jl")
+
 function test_schrodinger_greedy(a::T, b::T, Lt, nb_terms::Int, newton_nb_iter::Int, ::Type{T}, plot_resut) where{T<:AbstractFloat}
 
     GT = GaussianWavePacket1D{Complex{T}, Complex{T}, T, T}
@@ -36,6 +38,11 @@ function test_schrodinger_greedy(a::T, b::T, Lt, nb_terms::Int, newton_nb_iter::
 
         G_list, res_list = schrodinger_gaussian_greedy(a, b, Lt, G0, apply_op, nb_terms; maxiter=newton_nb_iter, verbose=true, fullverbose=false)
 
+        M = 20.0
+        Lx = 4096
+        hx = 2*M / (Lx+1)
+        U = schrodinger_sine(a, b, Lt, G0, v, M, Lx)
+
         if plot_resut
             x_list = T.(-10:0.02:10)
             t_list = zeros(Lt)
@@ -53,7 +60,17 @@ function test_schrodinger_greedy(a::T, b::T, Lt, nb_terms::Int, newton_nb_iter::
                 # fx_re = real.(fgx)
                 # fx_im = imag.(fgx)
                 fx_v = v.(x_list)
-                plot(x_list, [fx, fx_v], legend=:none, ylims=(-0.4, 2.0))
+
+                f_ref = zeros(length(x_list))
+                for j in eachindex(x_list)
+                    x = x_list[j]
+                    μ = complex(0.0)
+                    for p in 1:Lx
+                        μ += U[p, k] * sin(π * p * (x + M) / (2*M))
+                    end
+                    f_ref[j] = abs2(μ)
+                end
+                plot(x_list, [fx, fx_v, f_ref], legend=:none, ylims=(-0.4, 2.0))
             end fps=30 every (max(round(Int, Lt / (30 * (b-a))), 1))
             display(g)
 

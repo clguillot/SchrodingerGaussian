@@ -18,16 +18,16 @@ function test_schrodinger_greedy_timestep(a::T, b::T, Lt::Int, nb_steps::Int, nb
     try
         BLAS.set_num_threads(1)
 
-        G0 = [GaussianWavePacket1D(complex(1.0), complex(1.0), 6.0, -1.0)]
+        # G0 = [GaussianWavePacket1D(complex(1.0), complex(1.0), 6.0, -1.0)]
         # G0 = [GaussianWavePacket1D(complex(0.5), complex(8.0), 1/sqrt(2.0), 0.0)]
-        # G0 = [GaussianWavePacket1D(complex(1.0), complex(1.0), 0.0, 0.0)]
+        G0 = [GaussianWavePacket1D(complex(1.0), complex(1.0), 1.5, 0.0)]
 
-        Gv = Gaussian1D(1.0, 1.0, 0.0)
-        v(x) = Gv(x)
+        # Gv = Gaussian1D(1.0, 1.0, 0.0)
+        # v(x) = Gv(x)
         # v(x) = x^4 - x^2
-        # Gv1 = Gaussian1D(1.0, 1.0, 2.0)
-        # Gv2 = Gaussian1D(1.0, 1.0, -2.0)
-        # v(x) = Gv1(x) + Gv2(x)
+        Gv1 = Gaussian1D(1.0, 1.0, 2.0)
+        Gv2 = Gaussian1D(1.0, 1.0, -2.0)
+        v(x) = Gv1(x) + Gv2(x)
 
         G_list = zeros(GT, nb_terms, Lt)
         lt = fld(Lt, nb_steps)
