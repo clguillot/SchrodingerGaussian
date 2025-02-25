@@ -146,20 +146,21 @@ end
     - G0 is obtained by unpacking X0
     - H(t)g = apply_op(t, g) for any gaussian wave packet g
 =#
-function schrodinger_gaussian_elementary_residual(a::T, b::T, Lt::Int, k::Int,
-                                        apply_op, Wf, Wg, X::AbstractVector{T1}) where{T<:Real, T1<:Real}
+function schrodinger_gaussian_elementary_residual(::Type{Gtype}, a::T, b::T, Lt::Int, k::Int,
+                                        apply_op, Wf, Wg, X::AbstractVector{T1}) where{Gtype<:AbstractWavePacket, T<:Real, T1<:Real}
+    psize = param_size(Gtype)
     if !(1 <= k <= Lt-1)
         throw(BoundsError("k is equal to $k but must be between 1 and Lt-1=$(Lt-1)"))
     end
-    if length(X) != Lt*gaussian_param_size
-        throw(DimensionMismatch("X must be a Vector of size $(gaussian_param_size * Lt) but has size $(length(X))"))
+    if length(X) != Lt*psize
+        throw(DimensionMismatch("X must be a Vector of size $(psize * Lt) but has size $(length(X))"))
     end
     
     h = (b-a)/(Lt-1)
     t = a + (k-1)*h
 
-    G0 = unpack_gaussian_parameters(X, (k-1)*gaussian_param_size + 1)
-    G1 = unpack_gaussian_parameters(X, k*gaussian_param_size + 1)
+    G0 = unpack_gaussian_parameters(Gtype, X, (k-1)*psize + 1)
+    G1 = unpack_gaussian_parameters(Gtype, X, k*psize + 1)
 
     HG0 = apply_op(t, G0)
     HG1 = apply_op(t+h, G1)
@@ -193,38 +194,38 @@ mutable struct SchGaussianLocalGradientCFG{T<:Real, CG}
     X0::Vector{T}
     cfg_gradient::CG
 end
-function SchGaussianLocalGradientCFG(Lt::Int, X::AbstractVector{T}) where{T<:Real}
-    if length(X) != Lt*gaussian_param_size
-        throw(DimensionMismatch("X must be a Vector of size $(Lt*gaussian_param_size) but has size $(length(X))"))
+function SchGaussianLocalGradientCFG(::Type{Gtype}, Lt::Int, X::AbstractVector{T}) where{Gtype<:AbstractWavePacket, T<:Real}
+    psize = param_size(Gtype)
+    if length(X) != Lt*psize
+        throw(DimensionMismatch("X must be a Vector of size $(Lt*psize) but has size $(length(X))"))
     end
-    X0 = zeros(T, gaussian_param_size)
-    cfg_gradient = ForwardDiff.GradientConfig(x -> nothing, X0, ForwardDiff.Chunk(gaussian_param_size))
+    X0 = zeros(T, psize)
+    cfg_gradient = ForwardDiff.GradientConfig(x -> nothing, X0, ForwardDiff.Chunk(2))
     return SchGaussianLocalGradientCFG(X0, cfg_gradient)
 end
-function schrodinger_gaussian_residual_local_gradient!(∇::AbstractVector{T}, a::T, b::T, Lt::Int, k::Int,
-                                        apply_op::Fop,
-                                        Gf, Gg,
-                                        X::AbstractVector{T},
-                                        cfg=SchGaussianLocalGradientCFG(Lt, X)) where{T<:Real, Fop}
+function schrodinger_gaussian_residual_local_gradient!(::Type{Gtype}, ∇::AbstractVector{T}, a::T, b::T, Lt::Int, k::Int,
+                                        apply_op, Gf, Gg, X::AbstractVector{T},
+                                        cfg=SchGaussianLocalGradientCFG(Gtype, Lt, X)) where{Gtype<:AbstractWavePacket, T<:Real}
+    psize = param_size(Gtype)
     if !(1 <= k <= Lt)
         throw(BoundsError("k is equal to $k but must be between 1 and Lt-1=$(Lt-1)"))
     end
-    if length(X) != Lt*gaussian_param_size
-        throw(DimensionMismatch("X must be a Vector of size $(gaussian_param_size * Lt) but has size $(length(X))"))
+    if length(X) != Lt*psize
+        throw(DimensionMismatch("X must be a Vector of size $(psize * Lt) but has size $(length(X))"))
     end
     
     h = (b-a)/(Lt-1)
     t = a + (k-1)*h
 
     X0 = cfg.X0
-    X0 .= @view X[(k-1)*gaussian_param_size + 1 : k*gaussian_param_size]
+    X0 .= @view X[(k-1)*psize + 1 : k*psize]
 
     if k == 1
-        G1 = unpack_gaussian_parameters(X, gaussian_param_size + 1)
+        G1 = unpack_gaussian_parameters(Gtype, X, psize + 1)
         HG1 = apply_op(t+h, G1)
 
         function f_right(Y, apply_op)
-            G = unpack_gaussian_parameters(Y)
+            G = unpack_gaussian_parameters(Gtype, Y)
             HG = apply_op(t, G)
 
             # Quadratic part
@@ -242,11 +243,11 @@ function schrodinger_gaussian_residual_local_gradient!(∇::AbstractVector{T}, a
         return ForwardDiff.gradient!(∇, Y -> f_right(Y, apply_op), X0, cfg.cfg_gradient, Val(false))
 
     elseif k == Lt
-        Gmm1 = unpack_gaussian_parameters(X, (Lt-2)*gaussian_param_size + 1)
+        Gmm1 = unpack_gaussian_parameters(Gtype, X, (Lt-2)*psize + 1)
         HGmm1 = apply_op(t-h, Gmm1)
 
         function f_left(Y, apply_op)
-            G = unpack_gaussian_parameters(Y)
+            G = unpack_gaussian_parameters(Gtype, Y)
             HG = apply_op(t, G)
 
             # Quadratic part
@@ -263,13 +264,13 @@ function schrodinger_gaussian_residual_local_gradient!(∇::AbstractVector{T}, a
 
         return ForwardDiff.gradient!(∇, Y -> f_left(Y, apply_op), X0, cfg.cfg_gradient, Val(false))
     else
-        Gm1 = unpack_gaussian_parameters(X, (k-2)*gaussian_param_size + 1)
-        Gp1 = unpack_gaussian_parameters(X, k*gaussian_param_size + 1)
+        Gm1 = unpack_gaussian_parameters(Gtype, X, (k-2)*psize + 1)
+        Gp1 = unpack_gaussian_parameters(Gtype, X, k*psize + 1)
         HGm1 = apply_op(t-h, Gm1)
         HGp1 = apply_op(t+h, Gp1)
 
         function f_middle(Y, apply_op)
-            G_middle = unpack_gaussian_parameters(Y)
+            G_middle = unpack_gaussian_parameters(Gtype, Y)
             HG_middle = apply_op(t, G_middle)
 
             # Quadratic part
@@ -324,16 +325,16 @@ end
         - G0, G1 are obtained by unpacking respectively X[1:6] and X[7:12]
         - H(t)g = apply_op(t, g) for any gaussian wave packet g
 =#
-function schrodinger_gaussian_local_residual_linear_part(t::T, h::T, apply_op,
+function schrodinger_gaussian_local_residual_linear_part(::Type{Gtype}, t::T, h::T, apply_op,
             Gf0, Gf1, X::AbstractVector{T1},
-            ::Val{check_len}=Val(true)) where{T<:Real, T1<:Real, check_len}
-    
-    if check_len && length(X) != 2*gaussian_param_size
-        throw(DimensionMismatch("X and must be a Vector of size $(2*gaussian_param_size) but has size $(length(X))"))
+            ::Val{check_len}=Val(true)) where{Gtype<:AbstractWavePacket, T<:Real, T1<:Real, check_len}
+    psize = param_size(Gtype)
+    if check_len && length(X) != 2*psize
+        throw(DimensionMismatch("X and must be a Vector of size $(2*psize) but has size $(length(X))"))
     end
     
-    G0 = unpack_gaussian_parameters(X, 1)
-    G1 = unpack_gaussian_parameters(X, gaussian_param_size + 1)
+    G0 = unpack_gaussian_parameters(Gtype, X, 1)
+    G1 = unpack_gaussian_parameters(Gtype, X, psize + 1)
     HG0 = apply_op(t, G0)
     HG1 = apply_op(t+h, G1)
 

@@ -13,7 +13,7 @@ include("reference_solution.jl")
 
 function test_schrodinger_greedy(a::T, b::T, Lt, nb_terms::Int, newton_nb_iter::Int, ::Type{T}, plot_resut) where{T<:AbstractFloat}
 
-    GT = GaussianWavePacket1D{Complex{T}, Complex{T}, T, T}
+    Gtype = GaussianWavePacket1D{Complex{T}, Complex{T}, T, T}
     blas_nb_threads = BLAS.get_num_threads()
 
     try
@@ -23,7 +23,7 @@ function test_schrodinger_greedy(a::T, b::T, Lt, nb_terms::Int, newton_nb_iter::
         # G0 = [GaussianWavePacket1D(complex(0.5), complex(8.0), 1/sqrt(2.0), 0.0)]
         # G0 = [GaussianWavePacket1D(complex(1.0), complex(1.0), 0.0, 0.0)]
         
-        Gf = zeros(GT, 0, Lt)
+        Gf = zeros(Gtype, 0, Lt)
         # for k in eachindex(Gf)
         #     t = a + (k-1)/(Lt-1)*(b-a)
         #     Gf[1, k] = Gaussian{T}(0.5*exp(t), 1.0, 5.0, -1.0)
@@ -36,7 +36,7 @@ function test_schrodinger_greedy(a::T, b::T, Lt, nb_terms::Int, newton_nb_iter::
         # Gv2 = Gaussian1D(1.0, 1.0, -2.0)
         # v(x) = Gv1(x) + Gv2(x)
 
-        G_list, res_list = schrodinger_gaussian_greedy(a, b, Lt, G0, apply_op, nb_terms; maxiter=newton_nb_iter, verbose=true, fullverbose=false)
+        G_list, res_list = schrodinger_gaussian_greedy(Gtype, T, a, b, Lt, G0, apply_op, nb_terms; maxiter=newton_nb_iter, verbose=true, fullverbose=false)
 
         M = 20.0
         Lx = 4096
@@ -49,7 +49,7 @@ function test_schrodinger_greedy(a::T, b::T, Lt, nb_terms::Int, newton_nb_iter::
             norm_list = zeros(Lt)
             g = @gif for k in 1:Lt
                 t = a + (k-1) * (b-a)/(Lt-1)
-                G = zeros(GT, nb_terms)
+                G = zeros(Gtype, nb_terms)
                 for j=1:nb_terms
                     G[j] = inv_fourier(unitary_product(2*t, fourier(G_list[j, k])))
                 end

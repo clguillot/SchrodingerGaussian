@@ -2,30 +2,31 @@ include("local_residual.jl")
 include("residual.jl")
 
 # A \ ∇
-function build_newton_direction!(d::Vector{T}, A::BlockBandedMatrix{T}, ∇::Vector{T}, cfg::BlockCholeskyStaticConfig=BlockCholeskyStaticConfig(∇, Val(gaussian_param_size))) where{T <: AbstractFloat}
-    return block_tridiagonal_cholesky_solver_static!(d, A, ∇, Val(gaussian_param_size), cfg)
+function build_newton_direction!(::Type{Gtype}, d::Vector{T}, A::BlockBandedMatrix{T}, ∇::Vector{T}, cfg=BlockCholeskyStaticConfig(∇, Val(param_size(Gtype)))) where{Gtype<:AbstractWavePacket, T<:Real}
+    return block_tridiagonal_cholesky_solver_static!(d, A, ∇, Val(param_size(Gtype)), cfg)
 end
 
 #
-function schrodinger_gaussian_linesearch(U::Vector{T}, ∇::Vector{T}, X::Vector{T}, d::Vector{T},
+function schrodinger_gaussian_linesearch(::Type{Gtype}, U::Vector{T}, ∇::Vector{T}, X::Vector{T}, d::Vector{T},
                                         a::T, b::T, Lt::Int,
                                         G0::AbstractVector{<:AbstractWavePacket},
                                         apply_op,
                                         Gf, Gg,
-                                        cfg::SchGaussianGradientCFG=SchGaussianGradientCFG(Lt, U)) where{T<:Real}
+                                        cfg=SchGaussianGradientCFG(Gtype, Lt, U)) where{Gtype<:AbstractWavePacket, T<:Real}
+    psize = param_size(Gtype)
     function ϕ(α)
         @. U = X + α * d
-        return  schrodinger_gaussian_residual(a, b, Lt, G0, apply_op, Gf, Gg, U)
+        return  schrodinger_gaussian_residual(Gtype, a, b, Lt, G0, apply_op, Gf, Gg, U)
     end
     function dϕ(α)
         @. U = X + α * d
-        schrodinger_gaussian_gradient!(∇, a, b, Lt, G0, apply_op, Gf, Gg, U, cfg)
+        schrodinger_gaussian_gradient!(Gtype, ∇, a, b, Lt, G0, apply_op, Gf, Gg, U, cfg)
         return dot(d, ∇)
     end
     function ϕdϕ(α)
         @. U = X + α * d
-        val = schrodinger_gaussian_residual(a, b, Lt, G0, apply_op, Gf, Gg, U)
-        schrodinger_gaussian_gradient!(∇, a, b, Lt, G0, apply_op, Gf, Gg, U, cfg)
+        val = schrodinger_gaussian_residual(Gtype, a, b, Lt, G0, apply_op, Gf, Gg, U)
+        schrodinger_gaussian_gradient!(Gtype, ∇, a, b, Lt, G0, apply_op, Gf, Gg, U, cfg)
         return (val, dot(d, ∇))
     end
 
@@ -33,11 +34,10 @@ function schrodinger_gaussian_linesearch(U::Vector{T}, ∇::Vector{T}, X::Vector
     # More precisely, the real part of the variance cannot be more than halved
     alphamax = typemax(T)
     for k in 1:Lt
-        rez = real(unpack_gaussian_parameter_z(X, (k-1) * gaussian_param_size + 1))
-        rez_dir = real(unpack_gaussian_parameter_z(d, (k-1) * gaussian_param_size + 1))
-        if rez_dir < 0
-            alphamax = min(alphamax, -rez / (2*rez_dir))
-        end
+        re_z = real.(unpack_gaussian_parameter_z(Gtype, X, (k-1) * psize + 1))
+        re_z_dir = real.(unpack_gaussian_parameter_z(Gtype, d, (k-1) * psize + 1))
+        w = @. ifelse(re_z_dir < 0, -re_z / (2*re_z_dir), typemax(T))
+        alphamax = min(alphamax, minimum(w))
     end
     ls = HagerZhang{T}(;alphamax=alphamax)
 
@@ -57,16 +57,17 @@ mutable struct SchBestGaussianCFG{T, CG, CM, Cchol}
     cfg_metric::CM
     cfg_cholesky::Cchol
 end
-function SchBestGaussianCFG(::Type{T}, Lt::Int) where{T<:Real}
-    X = zeros(T, gaussian_param_size * Lt)  #Current parameters
+function SchBestGaussianCFG(::Type{Gtype}, ::Type{T}, Lt::Int) where{Gtype<:AbstractWavePacket, T<:Real}
+    psize = param_size(Gtype)
+    X = zeros(T, psize * Lt)  #Current parameters
     U = similar(X)  #Buffer for sets of parameters
     ∇ = similar(X)  #Buffer for the gradient
     d = similar(X)  #Descent direction
-    A = BlockBandedMatrix(Diagonal(zeros(T, Lt * gaussian_param_size)), #Buffer for the metric
-        fill(gaussian_param_size, Lt), fill(gaussian_param_size, Lt), (1,1))
-    cfg_gradient = SchGaussianGradientCFG(Lt, U)
-    cfg_metric = SchGaussianGradientAndMetricCFG(Lt, X)
-    cfg_cholesky = BlockCholeskyStaticConfig(∇, Val(gaussian_param_size))
+    A = BlockBandedMatrix(Diagonal(zeros(T, Lt * psize)), #Buffer for the metric
+        fill(psize, Lt), fill(psize, Lt), (1,1))
+    cfg_gradient = SchGaussianGradientCFG(Gtype, Lt, U)
+    cfg_metric = SchGaussianGradientAndMetricCFG(Gtype, Lt, X)
+    cfg_cholesky = BlockCholeskyStaticConfig(∇, Val(psize))
     return SchBestGaussianCFG(X, U, ∇, d, A, cfg_gradient, cfg_metric, cfg_cholesky)
 end
 
@@ -83,28 +84,24 @@ end
     - g(t) = ∑ₖ,ᵣ Gg[r, k] ζₖ'(t)
     Return G::Vector{<:GaussianWavePacket1D}
 =#
-function schrodinger_best_gaussian(a::T, b::T, Lt::Int, G0::AbstractVector{<:AbstractWavePacket1D},
-                                        apply_op,
-                                        Gf, Gg,
+function schrodinger_best_gaussian(::Type{Gtype}, ::Type{T}, a::T, b::T, Lt::Int,
+                                        Ginit, apply_op, Gf, Gg,
                                         abs_tol::T,
-                                        cfg=SchBestGaussianCFG(T, Lt);
-                                        maxiter::Int = 1000,
-                                        verbose::Bool=false) where{T<:AbstractFloat}
-    
-    
-    GT = GaussianWavePacket1D{Complex{T}, Complex{T}, T, T}
+                                        cfg=SchBestGaussianCFG(Gtype, T, Lt);
+                                        maxiter::Int = 1000, verbose::Bool=false) where{Gtype<:AbstractWavePacket, T<:AbstractFloat}
+    psize = param_size(Gtype)
     
     #Allocating buffers
     X = cfg.X
 
     verbose && println("Computing an approximation of the initial condition")
-    Ginit = gaussian_approx(G0, unpack_gaussian_parameters(rand(T, gaussian_param_size)); verbose=verbose, maxiter=100*maxiter)
+    G_approx_init = gaussian_approx(Gtype, T, Ginit, unpack_gaussian_parameters(Gtype, @SVector rand(T, psize)); verbose=verbose, maxiter=100*maxiter)
     
     # Fills X with the approximation of the initial condition
     for k=1:Lt
-        pack_gaussian_parameters!(X, Ginit, (k-1) * gaussian_param_size + 1)
+        pack_gaussian_parameters!(X, G_approx_init, (k-1) * psize + 1)
     end
-    # E0 = schrodinger_gaussian_residual(a, b, Lt, G0, apply_op, Gf, Gg, X)
+    # E0 = schrodinger_gaussian_residual(a, b, Lt, Ginit, apply_op, Gf, Gg, X)
     # println("Initial condition residual = $E0")
 
     #Gradient and Hessian
@@ -118,17 +115,17 @@ function schrodinger_best_gaussian(a::T, b::T, Lt::Int, G0::AbstractVector{<:Abs
 
     # Global space-time iterations
     iter = 0
-    E0 = schrodinger_gaussian_residual(a, b, Lt, G0, apply_op, Gf, Gg, X)
+    E0 = schrodinger_gaussian_residual(Gtype, a, b, Lt, Ginit, apply_op, Gf, Gg, X)
     while iter < maxiter
         iter += 1
         verbose && println("Iteration $iter on $maxiter :")
 
         #Natural Gradient descent step
-        schrodinger_gaussian_gradient_and_metric!(∇, A, a, b, Lt, G0, apply_op, Gf, Gg, X, cfg_metric)
-        build_newton_direction!(d, A, ∇, cfg_cholesky)
+        schrodinger_gaussian_gradient_and_metric!(Gtype, ∇, A, a, b, Lt, Ginit, apply_op, Gf, Gg, X, cfg_metric)
+        build_newton_direction!(Gtype, d, A, ∇, cfg_cholesky)
         res = sqrt(max(dot(d, ∇), zero(T)) / 2)
         @. d = T(-0.5) * d
-        α, E = schrodinger_gaussian_linesearch(U, ∇, X, d, a, b, Lt, G0, apply_op, Gf, Gg, cfg_gradient)
+        α, E = schrodinger_gaussian_linesearch(Gtype, U, ∇, X, d, a, b, Lt, Ginit, apply_op, Gf, Gg, cfg_gradient)
         @. X += α * d
         verbose && println("res = $res")
 
@@ -145,10 +142,6 @@ function schrodinger_best_gaussian(a::T, b::T, Lt::Int, G0::AbstractVector{<:Abs
     verbose && println("Number of iterations : $iter")
 
     #Unpacking the result
-    G = Vector{GT}(undef, Lt)
-    for k=1:Lt
-        G[k] = unpack_gaussian_parameters(X, (k-1)*gaussian_param_size + 1)
-    end
-
-    return G, schrodinger_gaussian_residual(a, b, Lt, G0, apply_op, Gf, Gg, X)
+    G = [unpack_gaussian_parameters(Gtype, X, (k-1)*psize + 1) for k in 1:Lt]
+    return G, schrodinger_gaussian_residual(Gtype, a, b, Lt, Ginit, apply_op, Gf, Gg, X)
 end
