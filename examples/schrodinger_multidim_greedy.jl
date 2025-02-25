@@ -13,7 +13,7 @@ include("apply_op.jl")
 
 function test_schrodinger_multidim_greedy(a::T, b::T, Lt, nb_terms::Int, newton_nb_iter::Int, ::Type{T}, plot_resut) where{T<:AbstractFloat}
 
-    D = 3
+    D = 2
     Gtype = GaussianWavePacket{D, Complex{T}, Complex{T}, T, T}
     blas_nb_threads = BLAS.get_num_threads()
 
@@ -94,4 +94,6 @@ function test_schrodinger_multidim_greedy(a::T, b::T, Lt, nb_terms::Int, newton_
     finally
         BLAS.set_num_threads(blas_nb_threads)
     end
+
+    return nothing
 end
