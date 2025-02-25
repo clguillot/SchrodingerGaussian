@@ -6,20 +6,6 @@ function gaussian_approx_residual(G::AbstractWavePacket, G_list)
     return norm2_L2(G) - 2 * real(dot_L2(G, G_list))
 end
 
-# #=
-#     Computes -2<G_X, ∑G_list[k]>
-# =#
-# function gaussian_approx_residual_linear_part(G::AbstractWavePacket, G_list)
-    
-#     N = zero(real(promote_type(core_type(G), core_type(G_list))))
-    
-#     for g in G_list
-#         N -= 2 * real(dot_L2(g, G))
-#     end
-
-#     return -2 * sum(real(dot_L2(G, gk)) for gk in G_list)
-# end
-
 #=
     Returns |∑G_list[k]|^2
 =#

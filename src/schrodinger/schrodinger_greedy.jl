@@ -26,6 +26,7 @@ function schrodinger_gaussian_greedy(::Type{Gtype}, ::Type{T}, a::T, b::T, Lt::I
     Gf = zeros(Gtype, 0, Lt)
 
     Gg_ = zeros(Gtype, nb_terms, Lt)
+    Gg = zeros(Gtype, 0, Lt)
 
     G = zeros(Gtype, nb_terms, Lt)
     X = zeros(T, psize * Lt, nb_terms)
@@ -60,11 +61,11 @@ function schrodinger_gaussian_greedy(::Type{Gtype}, ::Type{T}, a::T, b::T, Lt::I
             GramMatrix[p, iter] = μ
             GramMatrix[iter, p] = conj(μ)
         end
-        F[iter] = @views schrodinger_gaussian_residual_linear_part(Gtype, a, b, Lt, Ginit, apply_op, Gf, X[:, iter])
+        F[iter] = @views schrodinger_gaussian_residual_linear_part(Gtype, a, b, Lt, Ginit, apply_op, Gf, Gg, X[:, iter])
 
         # Λ[1:iter] = T(-0.5) .* (GramMatrix[1:iter, 1:iter] \ conj.(F[1:iter]))
         Λ[1:iter] = ones(iter)
-        res = real(dot(Λ[1:iter], GramMatrix[1:iter, 1:iter], Λ[1:iter]) + dot(F[1:iter], Λ[1:iter]) + C0)
+        res = real(dot(Λ[1:iter], GramMatrix[1:iter, 1:iter], Λ[1:iter]) - 2 * dot(F[1:iter], Λ[1:iter]) + C0)
         verbose && println("Residual = $res")
         res_list[iter] = res
         # println("Λ = ", Λ[1:iter])
@@ -75,10 +76,10 @@ function schrodinger_gaussian_greedy(::Type{Gtype}, ::Type{T}, a::T, b::T, Lt::I
         for j=1:iter
             for k=1:Lt
                 t = a + (k-1)/(Lt-1) * (b - a)
-                Gf_[j, k] = Λ[j] * apply_op(t, G[j, k])
-                Gg_[j, k] = -1im * Λ[j] * G[j, k]
+                Gf_[j, k] = -Λ[j] * apply_op(t, G[j, k])
+                Gg_[j, k] = -Λ[j] * G[j, k]
             end
-            G0_[n0 + j] = - Λ[j] * G[j, 1]
+            G0_[n0 + j] = -Λ[j] * G[j, 1]
         end
 
         # res0 = gaussian_approx_residual_constant_part(G0_)
@@ -89,7 +90,7 @@ function schrodinger_gaussian_greedy(::Type{Gtype}, ::Type{T}, a::T, b::T, Lt::I
 
     for iter=1:nb_terms
         for k=1:Lt
-            G[iter, k] = Λ[iter] * G[iter, k]
+            G[iter, k] = G[iter, k]
         end
     end
 

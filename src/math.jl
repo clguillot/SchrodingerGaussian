@@ -42,3 +42,9 @@ end
     im_retval = FD.dual_definition_retval(Val{T}(), imag(val), im_deriv, re_partials, re_deriv, im_partials)
     return complex(re_retval, im_retval)
 end
+
+# Multiplication by imaginary unit 1im
+@inline function im_unit_mul(z::Complex{T}) where{T}
+    x, y = reim(z)
+    return complex(-y, x)
+end

@@ -12,16 +12,34 @@
         - H(t)g = apply_op(t, g) for any gaussian wave packet g
 =#
 function schrodinger_gaussian_residual(::Type{Gtype}, a::T, b::T, Lt::Int, Ginit::AbstractVector,
-                apply_op, Gf, Gg, X::AbstractVector{T}) where{Gtype<:AbstractWavePacket, T<:Real}
+                apply_op, Gf, Gg, X::AbstractVector{T1}) where{Gtype<:AbstractWavePacket, T<:Real, T1<:Real}
     psize = param_size(Gtype)
     if length(X) != psize * Lt
         throw(DimensionMismatch("X must be a Vector of size $(psize * Lt) but has size $(length(X))"))
     end
 
-    #PDE residual
-    res = schrodinger_gaussian_elementary_residual(Gtype, a, b, Lt, 1, apply_op, Gf, Gg, X)
-    for k in 2:Lt-1
-        res += schrodinger_gaussian_elementary_residual(Gtype, a, b, Lt, k, apply_op, Gf, Gg, X)
+    res = zero(real(promote_type(core_type(eltype(Ginit)), T, T1)))
+    h = (b-a) / (Lt-1)
+
+    Gk = unpack_gaussian_parameters(Gtype, X)
+    HGk = apply_op(a, Gk)
+    for k in 1:Lt
+        # Single element part
+        res += schrodinger_gaussian_square_residual(h, Lt, k, Gk, HGk)
+        for l=max(1,k-1):min(Lt,k+1)
+            res -= @views 2 * real(schrodinger_gaussian_cross_residual(h, Lt, k, l, Gk, Gg[:, l], HGk, Gf[:, l]))
+        end
+
+        # Interaction part
+        if k < Lt
+            Gl = unpack_gaussian_parameters(Gtype, X, k*psize + 1)
+            HGl = apply_op(a + k*h, Gl)
+            res += 2 * real(schrodinger_gaussian_cross_residual(h, Lt, k, k+1, Gk, Gl, HGk, HGl))
+
+            # Updating iterators
+            Gk = Gl
+            HGk = HGl
+        end
     end
     res *= (b - a)
 
@@ -44,17 +62,19 @@ function schrodinger_gaussian_residual_sesquilinear_part(::Type{Gtype}, a::T, b:
         throw(DimensionMismatch("X2 must be a Vector of size $(psize * Lt) but has size $(length(X2))"))
     end
 
-    val = zero(promote_type(T, T1, T2))
+    val = zero(complex(promote_type(T, T1, T2)))
     h = (b-a)/(Lt-1)
 
     #PDE residual
-    for k=1:Lt-1
+    for k=1:Lt
         t = a + (k-1)*h
-        F0 = unpack_gaussian_parameters(Gtype, X1, (k-1)*psize + 1)
-        F1 = unpack_gaussian_parameters(Gtype, X1, k*psize + 1)
-        G0 = unpack_gaussian_parameters(Gtype, X2, (k-1)*psize + 1)
-        G1 = unpack_gaussian_parameters(Gtype, X2, k*psize + 1)
-        val += schrodinger_gaussian_local_residual_sesquilinear_part(t, h, apply_op, F0, F1, G0, G1)
+        G0 = unpack_gaussian_parameters(Gtype, X1, (k-1)*psize + 1)
+        HG0 = apply_op(t, G0)
+        for l=max(1,k-1):min(Lt,k+1)
+            G1 = unpack_gaussian_parameters(Gtype, X2, (l-1)*psize + 1)
+            HG1 = apply_op(a + (l-1)*h, G1)
+            val += schrodinger_gaussian_cross_residual(h, Lt, k, l, G0, G1, HG0, HG1)
+        end
     end
     val *= (b - a)
 
@@ -70,28 +90,29 @@ end
 
 =#
 function schrodinger_gaussian_residual_linear_part(::Type{Gtype}, a::T, b::T, Lt::Int,
-                Ginit::AbstractVector{<:GaussianWavePacket},
-                apply_op, Gf, X::AbstractVector{T1}) where{Gtype<:AbstractWavePacket, T<:Real, T1<:Real}
+                Ginit::AbstractVector{<:AbstractWavePacket},
+                apply_op, Gf, Gg, X::AbstractVector{T1}) where{Gtype<:AbstractWavePacket, T<:Real, T1<:Real}
     psize = param_size(Gtype)
     if length(X) != psize * Lt
         throw(DimensionMismatch("X must be a Vector of size $(psize * Lt) but has size $(length(X))"))
     end
 
-    val = zero(promote_type(T, T1))
-    h = (b - a) / (Lt - 1)
+    val = zero(complex(promote_type(T, T1)))
+    h = (b-a)/(Lt-1)
 
     #PDE residual
-    for k=1:Lt-1
-        t = a + (k-1)*h
-        @views Y = X[(k-1)*psize + 1 : (k+1)*psize]
-        @views val += schrodinger_gaussian_local_residual_linear_part(Gtype, t, h, apply_op,
-                    Gf[:, k], Gf[:, k+1], Y, Val(false))
+    for k in 1:Lt
+        Gk = unpack_gaussian_parameters(Gtype, X, (k-1)*psize + 1)
+        HGk = apply_op(a + (k-1)*h, Gk)
+        for l=max(1,k-1):min(Lt,k+1)
+            val += @views schrodinger_gaussian_cross_residual(h, Lt, l, k, Gg[:, l], Gk, Gf[:, l], HGk)
+        end
     end
     val *= (b - a)
 
     #Initial condition
     G0 = unpack_gaussian_parameters(Gtype, X)
-    val -= 2 * dot_L2(Ginit, G0)
+    val += dot_L2(Ginit, G0)
 
     return val
 end
