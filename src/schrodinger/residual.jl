@@ -21,7 +21,7 @@ function schrodinger_gaussian_residual(::Type{Gtype}, a::T, b::T, Lt::Int, Ginit
     #PDE residual
     res = schrodinger_gaussian_elementary_residual(Gtype, a, b, Lt, 1, apply_op, Gf, Gg, X)
     for k in 2:Lt-1
-        res += @views schrodinger_gaussian_elementary_residual(Gtype, a, b, Lt, k, apply_op, Gf, Gg, X)
+        res += schrodinger_gaussian_elementary_residual(Gtype, a, b, Lt, k, apply_op, Gf, Gg, X)
     end
     res *= (b - a)
 
@@ -130,15 +130,12 @@ function schrodinger_gaussian_gradient!(::Type{Gtype}, ∇::AbstractVector{T},
     end
 
     #PDE residual
-    function loc_grad(∇, a, b, Lt, k, apply_op, Gf, Gg, X, cfg)
+    @threads :static for k in 1:Lt
         kb = threadid()
 
         ∇loc = @view ∇[(k-1)*psize + 1 : k*psize]
         schrodinger_gaussian_residual_local_gradient!(Gtype, ∇loc, a, b, Lt, k, apply_op, Gf, Gg, X, cfg.cfg_gradient[kb])
         ∇loc .*= (b-a)
-    end
-    @threads :static for k in 1:Lt
-        loc_grad(∇, a, b, Lt, k, apply_op, Gf, Gg, X, cfg)
     end
 
     #Initial condition
@@ -204,39 +201,34 @@ function schrodinger_gaussian_gradient_and_metric!(::Type{Gtype}, ∇::AbstractV
     end
 
     # PDE residual
-    function loc_grad(∇, a, b, Lt, k, apply_op, Gf, Gg, X, cfg)
+    @threads :static for k=1:Lt
         kb = threadid()
 
+        # Gradient
         ∇loc = @view ∇[(k-1)*psize + 1 : k*psize]
         schrodinger_gaussian_residual_local_gradient!(Gtype, ∇loc, a, b, Lt, k, apply_op, Gf, Gg, X, cfg.cfg_gradient[kb])
         ∇loc .*= (b-a)
-    end
-    function loc_metric(A, a, b, Lt, k, l, X, cfg)
-        #Recovers buffers
-        kb = threadid()
-        Yk = cfg.Yk[kb]
-        Yl = cfg.Yl[kb]
-        fh = cfg.fh[kb]
-        h = (b-a)/(Lt-1)
 
-        @views Yk .= X[(k-1)*psize + 1 : k*psize]
-        @views Yl .= X[(l-1)*psize + 1 : l*psize]
-
-        gaussian_approx_metric_topright_hessian!(Gtype, fh, Yk, Yl, cfg.cfg_metric[kb])
-        α = (b - a) * fe_k_factor(h, k, l)
-        if k==l && (k==1 || k==Lt)
-            @views @. A[Block(k, k)] = α / 4 * (fh + fh')
-        elseif k==l
-            @views @. A[Block(k, k)] = α / 2 * (fh + fh')
-        else
-            @views @. A[Block(k, l)] = α * fh
-            @views @. A[Block(l, k)] = α * fh'
-        end
-    end
-    @threads :static for k=1:Lt
-        loc_grad(∇, a, b, Lt, k, apply_op, Gf, Gg, X, cfg)
+        # Metric
         for l=k:min(Lt,k+1)
-            loc_metric(A, a, b, Lt, k, l, X, cfg)
+            Yk = cfg.Yk[kb]
+            Yl = cfg.Yl[kb]
+            fh = cfg.fh[kb]
+            h = (b-a)/(Lt-1)
+
+            @views Yk .= X[(k-1)*psize + 1 : k*psize]
+            @views Yl .= X[(l-1)*psize + 1 : l*psize]
+
+            gaussian_approx_metric_topright_hessian!(Gtype, fh, Yk, Yl, cfg.cfg_metric[kb])
+            α = (b - a) * fe_k_factor(h, k, l)
+            if k==l && (k==1 || k==Lt)
+                @views @. A[Block(k, k)] = α / 4 * (fh + fh')
+            elseif k==l
+                @views @. A[Block(k, k)] = α / 2 * (fh + fh')
+            else
+                @views @. A[Block(k, l)] = α * fh
+                @views @. A[Block(l, k)] = α * fh'
+            end
         end
     end
 
