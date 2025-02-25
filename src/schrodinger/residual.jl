@@ -70,7 +70,7 @@ end
 
 =#
 function schrodinger_gaussian_residual_linear_part(::Type{Gtype}, a::T, b::T, Lt::Int,
-                Ginit::AbstractVector{<:GaussianWavePacket1D},
+                Ginit::AbstractVector{<:GaussianWavePacket},
                 apply_op, Gf, X::AbstractVector{T1}) where{Gtype<:AbstractWavePacket, T<:Real, T1<:Real}
     psize = param_size(Gtype)
     if length(X) != psize * Lt
