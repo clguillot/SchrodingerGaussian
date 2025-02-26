@@ -290,7 +290,7 @@ version = "1.11.0"
 
 [[deps.HermiteWavePackets]]
 deps = ["Cubature", "FastGaussQuadrature", "LinearAlgebra", "SpecialFunctions", "StaticArrays"]
-git-tree-sha1 = "965157cfb6907ef4ea63748658121bb8bd963840"
+git-tree-sha1 = "7586dfd493b9a6074e1bacc7a3fe58c26e68c27a"
 repo-rev = "main"
 repo-url = "https://github.com/clguillot/HermiteWavePackets"
 uuid = "0c63080c-9546-48d9-913a-8575c4379365"

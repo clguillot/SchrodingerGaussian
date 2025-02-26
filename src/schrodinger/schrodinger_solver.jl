@@ -84,7 +84,7 @@ end
     Return G::Vector{<:GaussianWavePacket1D}
 =#
 function schrodinger_best_gaussian(::Type{Gtype}, ::Type{T}, a::T, b::T, Lt::Int,
-                                        Ginit::AbstractWavePacket, apply_op,
+                                        Ginit::AbstractVector{Gtype}, apply_op,
                                         Gf::AbstractMatrix{<:AbstractWavePacket}, Gg::AbstractMatrix{<:AbstractWavePacket},
                                         abs_tol::T,
                                         cfg=SchBestGaussianCFG(Gtype, T, Lt);
@@ -97,10 +97,9 @@ function schrodinger_best_gaussian(::Type{Gtype}, ::Type{T}, a::T, b::T, Lt::Int
     X = cfg.X
 
     # Approximation of the initial condition
+    # Starts an approximation process from every center of Ginit, and takes the best
     verbose && println("Computing an approximation of the initial condition")
-    random_param = rand(T, psize)
-    random_param[5] += T(6.0)
-    G_approx_init = gaussian_approx(Gtype, T, Ginit, unpack_gaussian_parameters(Gtype, random_param); verbose=verbose, maxiter=100*maxiter)
+    G_approx_init, _ = gaussian_approx(Gtype, T, Ginit; verbose=verbose, maxiter=100*maxiter)
     
     # Minimizer over the basis of the approximation of the initial condition
     # Γ = ones(T, Lt)
@@ -126,7 +125,7 @@ function schrodinger_best_gaussian(::Type{Gtype}, ::Type{T}, a::T, b::T, Lt::Int
     end
     # Initial condition
     F .*= (b - a)
-    F[1] += dot_L2(G_approx_init, Ginit)
+    F[1] += dot_L2(G_approx_init, WavePacketArray(Ginit))
     Gram .*= (b - a)
     Gram[1, 1] += dot_L2(G_approx_init, G_approx_init)
     Γ = Gram' \ F
@@ -136,8 +135,6 @@ function schrodinger_best_gaussian(::Type{Gtype}, ::Type{T}, a::T, b::T, Lt::Int
         G = Γ[k] * G_approx_init
         pack_gaussian_parameters!(X, G, (k-1) * psize + 1)
     end
-    # E0 = schrodinger_gaussian_residual(a, b, Lt, Ginit, apply_op, Gf, Gg, X)
-    # println("Initial condition residual = $E0")
 
     #Gradient and Hessian
     U = cfg.U
@@ -150,17 +147,17 @@ function schrodinger_best_gaussian(::Type{Gtype}, ::Type{T}, a::T, b::T, Lt::Int
 
     # Global space-time iterations
     iter = 0
-    E0 = schrodinger_gaussian_residual(Gtype, a, b, Lt, Ginit, apply_op, Gf, Gg, X)
+    E0 = schrodinger_gaussian_residual(Gtype, a, b, Lt, WavePacketArray(Ginit), apply_op, Gf, Gg, X)
     while iter < maxiter
         iter += 1
         verbose && println("Iteration $iter on $maxiter :")
 
         #Natural Gradient descent step
-        schrodinger_gaussian_gradient_and_metric!(Gtype, ∇, A, a, b, Lt, Ginit, apply_op, Gf, Gg, X, cfg_metric)
+        schrodinger_gaussian_gradient_and_metric!(Gtype, ∇, A, a, b, Lt, WavePacketArray(Ginit), apply_op, Gf, Gg, X, cfg_metric)
         build_newton_direction!(Gtype, d, A, ∇, cfg_cholesky)
         res = sqrt(max(dot(d, ∇), zero(T)) / 2)
         @. d = T(-0.5) * d
-        α, E = schrodinger_gaussian_linesearch(Gtype, U, ∇, X, d, a, b, Lt, Ginit, apply_op, Gf, Gg, cfg_gradient)
+        α, E = schrodinger_gaussian_linesearch(Gtype, U, ∇, X, d, a, b, Lt, WavePacketArray(Ginit), apply_op, Gf, Gg, cfg_gradient)
         @. X += α * d
         verbose && println("res = $res")
 
@@ -178,5 +175,5 @@ function schrodinger_best_gaussian(::Type{Gtype}, ::Type{T}, a::T, b::T, Lt::Int
 
     #Unpacking the result
     G = [unpack_gaussian_parameters(Gtype, X, (k-1)*psize + 1) for k in 1:Lt]
-    return G, schrodinger_gaussian_residual(Gtype, a, b, Lt, Ginit, apply_op, Gf, Gg, X)
+    return G, schrodinger_gaussian_residual(Gtype, a, b, Lt, WavePacketArray(Ginit), apply_op, Gf, Gg, X)
 end

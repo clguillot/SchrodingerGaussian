@@ -11,8 +11,9 @@
     - g(t) = ∑ₖ,ᵣ Gg[r, k] ζₖ'(t)
     Return G::Vector{<:GaussianWavePacket1D}
 =#
-function schrodinger_gaussian_greedy(::Type{Gtype}, ::Type{T}, a::T, b::T, Lt::Int, Ginit::AbstractVector{Gtype}, apply_op, nb_terms::Int;
-                                        maxiter::Int = 1000, verbose::Bool=false, fullverbose::Bool=false) where{Gtype<:AbstractWavePacket, T<:AbstractFloat}
+function schrodinger_gaussian_greedy(::Type{Gtype}, ::Type{T}, a::T, b::T, Lt::Int,
+                Ginit::AbstractVector{Gtype}, apply_op, nb_terms::Int;
+                maxiter::Int = 1000, verbose::Bool=false, fullverbose::Bool=false) where{Gtype<:AbstractWavePacket, T<:AbstractFloat}
     
     verbose = verbose || fullverbose
     psize = param_size(Gtype)
@@ -46,10 +47,10 @@ function schrodinger_gaussian_greedy(::Type{Gtype}, ::Type{T}, a::T, b::T, Lt::I
 
     try
         BLAS.set_num_threads(1)
-        
+
         for iter=1:nb_terms
             verbose && println("Computing term $iter...")
-            G[iter, :], _ = @views schrodinger_best_gaussian(Gtype, T, a, b, Lt, WavePacketArray(G0_[1 : n0 + iter - 1]), apply_op,
+            G[iter, :], _ = @views schrodinger_best_gaussian(Gtype, T, a, b, Lt, G0_[1 : n0 + iter - 1], apply_op,
                     Gf_[1:iter-1, :], Gg_[1:iter-1, :], abs_tol, cfg;
                     maxiter=maxiter, verbose=fullverbose)
             

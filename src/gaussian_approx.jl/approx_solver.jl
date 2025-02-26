@@ -13,7 +13,7 @@ end
 
 
 function gaussian_approx_gradient_and_metric!(::Type{Gtype}, ∇::Vector{T}, A::Matrix{T},
-                                        G_list::AbstractWavePacket,
+                                        Ginit::AbstractWavePacket,
                                         X::Vector{T},
                                         cfg=GaussianApproxGradientAndMetricCFG(Gtype, X)) where{Gtype<:AbstractWavePacket, T<:Real}
     psize = param_size(Gtype)
@@ -28,7 +28,7 @@ function gaussian_approx_gradient_and_metric!(::Type{Gtype}, ∇::Vector{T}, A::
     end
     
     #Gradient
-    gaussian_approx_gradient!(Gtype, ∇, G_list, X, cfg.cfg_gradient)
+    gaussian_approx_gradient!(Gtype, ∇, Ginit, X, cfg.cfg_gradient)
 
     #Hessian
     gaussian_approx_metric_topright_hessian!(Gtype, A, X, X, cfg.cfg_metric)
@@ -57,13 +57,18 @@ function GaussianApproxCFG(::Type{Gtype}, ::Type{T}) where{Gtype<:AbstractWavePa
     return GaussianApproxCFG(U, X, ∇, d, A, cfg_gradient, cfg)
 end
 
-function gaussian_approx(::Type{Gtype}, ::Type{T}, G_list::AbstractWavePacket,
-                            G_initial_guess::Gtype,
+function gaussian_approx(::Type{Gtype}, ::Type{T}, Ginit::AbstractVector{Gtype},
                             cfg=GaussianApproxCFG(Gtype, T);
                             rel_tol::T=sqrt(eps(T)), maxiter::Int=1000, verbose::Bool=false) where{Gtype<:AbstractWavePacket, T<:Real}
     psize = param_size(Gtype)
-    abs_tol = rel_tol * gaussian_approx_residual_constant_part(G_list)
-    X = pack_gaussian_parameters!(cfg.X, G_initial_guess)
+    abs_tol = rel_tol * norm_L2(WavePacketArray(Ginit))
+
+    # Global optimization with respect to the linear parameter
+    j_max = argmax([abs(dot_L2(Ginit[j], WavePacketArray(Ginit))) for j in eachindex(Ginit)])
+    G0 = Ginit[j_max]
+    λ = dot_L2(G0, WavePacketArray(Ginit)) / norm2_L2(G0) 
+    X = pack_gaussian_parameters!(cfg.X, λ * G0)
+
     U = cfg.U
     d = cfg.d
     iter = 0
@@ -72,12 +77,7 @@ function gaussian_approx(::Type{Gtype}, ::Type{T}, G_list::AbstractWavePacket,
 
         verbose && println("Iteration $iter :")
 
-        # Global optimization with respect to the linear parameter
-        # G0 = unpack_gaussian_parameters(X)
-        # λ = dot_L2(G0, G_list) / norm2_L2(G0)
-        # pack_gaussian_parameters!(X, λ * G0)
-
-        ∇, A = gaussian_approx_gradient_and_metric!(Gtype, cfg.∇, cfg.A, G_list, X, cfg.cfg)
+        ∇, A = gaussian_approx_gradient_and_metric!(Gtype, cfg.∇, cfg.A, WavePacketArray(Ginit), X, cfg.cfg)
         chA = cholesky(Symmetric(SMatrix{psize, psize}(A)))
         Sd = chA \ SVector{psize}(∇)
         res = dot(Sd, ∇)
@@ -85,17 +85,17 @@ function gaussian_approx(::Type{Gtype}, ::Type{T}, G_list::AbstractWavePacket,
 
         function ϕ(α)
             @. U = X + α * d
-            return gaussian_approx_residual(unpack_gaussian_parameters(Gtype, U), G_list)
+            return gaussian_approx_residual(unpack_gaussian_parameters(Gtype, U), WavePacketArray(Ginit))
         end
         function dϕ(α)
             @. U = X + α * d
-            gaussian_approx_gradient!(Gtype, ∇, G_list, U, cfg.cfg_gradient)
+            gaussian_approx_gradient!(Gtype, ∇, WavePacketArray(Ginit), U, cfg.cfg_gradient)
             return dot(cfg.d, cfg.∇)
         end
         function ϕdϕ(α)
             @. U = X + α * d
-            val = gaussian_approx_residual(unpack_gaussian_parameters(Gtype, U), G_list)
-            gaussian_approx_gradient!(Gtype, ∇, G_list, U, cfg.cfg_gradient)
+            val = gaussian_approx_residual(unpack_gaussian_parameters(Gtype, U), WavePacketArray(Ginit))
+            gaussian_approx_gradient!(Gtype, ∇, WavePacketArray(Ginit), U, cfg.cfg_gradient)
             return (val, dot(d, ∇))
         end
 
@@ -130,5 +130,7 @@ function gaussian_approx(::Type{Gtype}, ::Type{T}, G_list::AbstractWavePacket,
         end
     end
 
-    return unpack_gaussian_parameters(Gtype, X)
+    G = unpack_gaussian_parameters(Gtype, X)
+    res = norm2_L2(G) + norm2_L2(WavePacketArray(Ginit)) - 2 * real(dot_L2(G, WavePacketArray(Ginit)))
+    return G, res
 end

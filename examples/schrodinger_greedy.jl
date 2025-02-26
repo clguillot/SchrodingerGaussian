@@ -25,12 +25,12 @@ function test_schrodinger_greedy(a::T, b::T, Lt, nb_terms::Int, newton_nb_iter::
     #     Gf[1, k] = Gaussian{T}(0.5*exp(t), 1.0, 5.0, -1.0)
     # end
 
-    Gv = Gaussian1D(1.0, 1.0, 0.0)
-    v(x) = Gv(x)
+    # Gv = Gaussian1D(1.0, 1.0, 0.0)
+    # v(x) = Gv(x)
     # v(x) = x^4 - x^2
-    # Gv1 = Gaussian1D(1.0, 1.0, 2.0)
-    # Gv2 = Gaussian1D(1.0, 1.0, -2.0)
-    # v(x) = Gv1(x) + Gv2(x)
+    Gv1 = Gaussian1D(1.0, 1.0, 2.0)
+    Gv2 = Gaussian1D(1.0, 1.0, -2.0)
+    v(x) = Gv1(x) + Gv2(x)
 
     G_list, res_list = schrodinger_gaussian_greedy(Gtype, T, a, b, Lt, G0, apply_op, nb_terms; maxiter=newton_nb_iter, verbose=true, fullverbose=false)
 
