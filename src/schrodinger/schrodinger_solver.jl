@@ -9,9 +9,8 @@ end
 #
 function schrodinger_gaussian_linesearch(::Type{Gtype}, U::Vector{T}, ∇::Vector{T}, X::Vector{T}, d::Vector{T},
                                         a::T, b::T, Lt::Int,
-                                        G0::AbstractVector{<:AbstractWavePacket},
-                                        apply_op,
-                                        Gf, Gg,
+                                        G0::AbstractWavePacket, apply_op,
+                                        Gf::AbstractMatrix{<:AbstractWavePacket}, Gg::AbstractMatrix{<:AbstractWavePacket},
                                         cfg=SchGaussianGradientCFG(Gtype, Lt, U)) where{Gtype<:AbstractWavePacket, T<:Real}
     psize = param_size(Gtype)
     function ϕ(α)
@@ -85,21 +84,57 @@ end
     Return G::Vector{<:GaussianWavePacket1D}
 =#
 function schrodinger_best_gaussian(::Type{Gtype}, ::Type{T}, a::T, b::T, Lt::Int,
-                                        Ginit, apply_op, Gf, Gg,
+                                        Ginit::AbstractWavePacket, apply_op,
+                                        Gf::AbstractMatrix{<:AbstractWavePacket}, Gg::AbstractMatrix{<:AbstractWavePacket},
                                         abs_tol::T,
                                         cfg=SchBestGaussianCFG(Gtype, T, Lt);
                                         maxiter::Int = 1000, verbose::Bool=false) where{Gtype<:AbstractWavePacket, T<:AbstractFloat}
     psize = param_size(Gtype)
+
+    h = (b-a)/(Lt-1)
     
     #Allocating buffers
     X = cfg.X
 
+    # Approximation of the initial condition
     verbose && println("Computing an approximation of the initial condition")
-    G_approx_init = gaussian_approx(Gtype, T, Ginit, unpack_gaussian_parameters(Gtype, @SVector rand(T, psize)); verbose=verbose, maxiter=100*maxiter)
+    random_param = rand(T, psize)
+    random_param[5] += T(6.0)
+    G_approx_init = gaussian_approx(Gtype, T, Ginit, unpack_gaussian_parameters(Gtype, random_param); verbose=verbose, maxiter=100*maxiter)
     
+    # Minimizer over the basis of the approximation of the initial condition
+    # Γ = ones(T, Lt)
+    Gram = Tridiagonal(zeros(Complex{T}, Lt-1), zeros(Complex{T}, Lt), zeros(Complex{T}, Lt-1))
+    F = zeros(Complex{T}, Lt)
+    # PDE residual
+    for k in 1:Lt
+        t = a + (k-1)*h
+        G = G_approx_init
+        HG = apply_op(t, G)
+
+        # Linear vector
+        for l in max(1,k-1):min(Lt,k+1)
+            F[k] += @views schrodinger_gaussian_cross_residual(h, Lt, k, l, G, WavePacketArray(Gg[:, l]), HG, WavePacketArray(Gf[:, l]))
+        end
+
+        # Gram matrix
+        Gram[k, k] = schrodinger_gaussian_square_residual(h, Lt, k, G, HG)
+        if k < Lt
+            Gram[k, k+1] = schrodinger_gaussian_cross_residual(h, Lt, k, k+1, G, G, HG, apply_op(t+h, G))
+            Gram[k+1, k] = conj(Gram[k, k+1])
+        end
+    end
+    # Initial condition
+    F .*= (b - a)
+    F[1] += dot_L2(G_approx_init, Ginit)
+    Gram .*= (b - a)
+    Gram[1, 1] += dot_L2(G_approx_init, G_approx_init)
+    Γ = Gram' \ F
+
     # Fills X with the approximation of the initial condition
     for k=1:Lt
-        pack_gaussian_parameters!(X, G_approx_init, (k-1) * psize + 1)
+        G = Γ[k] * G_approx_init
+        pack_gaussian_parameters!(X, G, (k-1) * psize + 1)
     end
     # E0 = schrodinger_gaussian_residual(a, b, Lt, Ginit, apply_op, Gf, Gg, X)
     # println("Initial condition residual = $E0")

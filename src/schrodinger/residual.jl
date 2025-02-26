@@ -11,14 +11,15 @@
         - For 1≤k≤Lt Gk is obtained by unpacking X[(k-1)*gaussian_param_size + 1 : k*gaussian_param_size]
         - H(t)g = apply_op(t, g) for any gaussian wave packet g
 =#
-function schrodinger_gaussian_residual(::Type{Gtype}, a::T, b::T, Lt::Int, Ginit::AbstractVector,
-                apply_op, Gf, Gg, X::AbstractVector{T1}) where{Gtype<:AbstractWavePacket, T<:Real, T1<:Real}
+function schrodinger_gaussian_residual(::Type{Gtype}, a::T, b::T, Lt::Int, Ginit::AbstractWavePacket,
+                apply_op, Gf::AbstractMatrix{<:AbstractWavePacket}, Gg::AbstractMatrix{<:AbstractWavePacket},
+                X::AbstractVector{T1}) where{Gtype<:AbstractWavePacket, T<:Real, T1<:Real}
     psize = param_size(Gtype)
     if length(X) != psize * Lt
         throw(DimensionMismatch("X must be a Vector of size $(psize * Lt) but has size $(length(X))"))
     end
 
-    res = zero(real(promote_type(core_type(eltype(Ginit)), T, T1)))
+    res = zero(real(promote_type(core_type(Ginit), T, T1)))
     h = (b-a) / (Lt-1)
 
     Gk = unpack_gaussian_parameters(Gtype, X)
@@ -27,7 +28,7 @@ function schrodinger_gaussian_residual(::Type{Gtype}, a::T, b::T, Lt::Int, Ginit
         # Single element part
         res += schrodinger_gaussian_square_residual(h, Lt, k, Gk, HGk)
         for l=max(1,k-1):min(Lt,k+1)
-            res -= @views 2 * real(schrodinger_gaussian_cross_residual(h, Lt, k, l, Gk, Gg[:, l], HGk, Gf[:, l]))
+            res -= @views 2 * real(schrodinger_gaussian_cross_residual(h, Lt, k, l, Gk, WavePacketArray(Gg[:, l]), HGk, WavePacketArray(Gf[:, l])))
         end
 
         # Interaction part
@@ -90,8 +91,9 @@ end
 
 =#
 function schrodinger_gaussian_residual_linear_part(::Type{Gtype}, a::T, b::T, Lt::Int,
-                Ginit::AbstractVector{<:AbstractWavePacket},
-                apply_op, Gf, Gg, X::AbstractVector{T1}) where{Gtype<:AbstractWavePacket, T<:Real, T1<:Real}
+                Ginit::AbstractWavePacket, apply_op,
+                Gf::AbstractMatrix{<:AbstractWavePacket}, Gg::AbstractMatrix{<:AbstractWavePacket},
+                X::AbstractVector{T1}) where{Gtype<:AbstractWavePacket, T<:Real, T1<:Real}
     psize = param_size(Gtype)
     if length(X) != psize * Lt
         throw(DimensionMismatch("X must be a Vector of size $(psize * Lt) but has size $(length(X))"))
@@ -105,7 +107,7 @@ function schrodinger_gaussian_residual_linear_part(::Type{Gtype}, a::T, b::T, Lt
         Gk = unpack_gaussian_parameters(Gtype, X, (k-1)*psize + 1)
         HGk = apply_op(a + (k-1)*h, Gk)
         for l=max(1,k-1):min(Lt,k+1)
-            val += @views schrodinger_gaussian_cross_residual(h, Lt, l, k, Gg[:, l], Gk, Gf[:, l], HGk)
+            val += @views schrodinger_gaussian_cross_residual(h, Lt, l, k, WavePacketArray(Gg[:, l]), Gk, WavePacketArray(Gf[:, l]), HGk)
         end
     end
     val *= (b - a)
@@ -139,8 +141,8 @@ function SchGaussianGradientCFG(::Type{Gtype}, Lt::Int, X::AbstractVector{T}) wh
     return SchGaussianGradientCFG(Y, fg, cfg0, cfg_gradient)
 end
 function schrodinger_gaussian_gradient!(::Type{Gtype}, ∇::AbstractVector{T},
-                a::T, b::T, Lt::Int, Ginit::AbstractVector,
-                apply_op, Gf, Gg, X::AbstractVector{T},
+                a::T, b::T, Lt::Int, Ginit::AbstractWavePacket, apply_op,
+                Gf::AbstractMatrix{<:AbstractWavePacket}, Gg::AbstractMatrix{<:AbstractWavePacket}, X::AbstractVector{T},
                 cfg=SchGaussianGradientCFG(Gtype, Lt, X)) where{Gtype<:AbstractWavePacket, T<:Real}
     psize = param_size(Gtype)
     if length(X) != psize * Lt
@@ -210,8 +212,9 @@ end
     Returns ∇, A
 =#
 function schrodinger_gaussian_gradient_and_metric!(::Type{Gtype}, ∇::AbstractVector{T}, A::BlockBandedMatrix{T},
-                                        a::T, b::T, Lt::Int, Ginit::AbstractVector, apply_op,
-                                        Gf, Gg, X::AbstractVector{T},
+                                        a::T, b::T, Lt::Int, Ginit::AbstractWavePacket, apply_op,
+                                        Gf::AbstractMatrix{<:AbstractWavePacket}, Gg::AbstractMatrix{<:AbstractWavePacket},
+                                        X::AbstractVector{T},
                                         cfg=SchGaussianGradientAndMetricCFG(Gtype, Lt, X)) where{Gtype<:AbstractWavePacket, T<:Real}
     psize = param_size(Gtype)
     if length(X) != psize * Lt

@@ -12,7 +12,7 @@ include("apply_op.jl")
 
 function test_schrodinger_greedy_timestep(a::T, b::T, Lt::Int, nb_steps::Int, nb_terms::Int, newton_nb_iter::Int, ::Type{T}, plot_resut) where{T<:AbstractFloat}
 
-    GT = GaussianWavePacket1D{Complex{T}, Complex{T}, T, T}
+    Gtype = GaussianWavePacket1D{Complex{T}, Complex{T}, T, T}
     blas_nb_threads = BLAS.get_num_threads()
 
     try
@@ -29,7 +29,7 @@ function test_schrodinger_greedy_timestep(a::T, b::T, Lt::Int, nb_steps::Int, nb
         Gv2 = Gaussian1D(1.0, 1.0, -2.0)
         v(x) = Gv1(x) + Gv2(x)
 
-        G_list = zeros(GT, nb_terms, Lt)
+        G_list = zeros(Gtype, nb_terms, Lt)
         lt = fld(Lt, nb_steps)
         h = (b-a) / (Lt-1)
         for p in ProgressBar(1:nb_steps)
@@ -39,7 +39,7 @@ function test_schrodinger_greedy_timestep(a::T, b::T, Lt::Int, nb_steps::Int, nb
             b_ = a + (k2-1)*h
             lt_ = k2 - k1 + 1
             G0_ = (p == 1) ? G0 : G_list[:, k1]
-            G_list[:, k1:k2], _ = schrodinger_gaussian_greedy(a_, b_, lt_, G0_, apply_op, nb_terms; maxiter=newton_nb_iter, verbose=false)
+            G_list[:, k1:k2], _ = schrodinger_gaussian_greedy(Gtype, T, a_, b_, lt_, G0_, apply_op, nb_terms; maxiter=newton_nb_iter, verbose=false)
         end
 
         if plot_resut
@@ -48,7 +48,7 @@ function test_schrodinger_greedy_timestep(a::T, b::T, Lt::Int, nb_steps::Int, nb
             norm_list = zeros(Lt)
             g = @gif for k in 1:Lt
                 t = a + (k-1) * (b-a)/(Lt-1)
-                G = zeros(GT, nb_terms)
+                G = zeros(Gtype, nb_terms)
                 for j=1:nb_terms
                     G[j] = inv_fourier(unitary_product(2*t, fourier(G_list[j, k])))
                 end

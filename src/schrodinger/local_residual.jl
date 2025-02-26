@@ -5,7 +5,8 @@
         - The (ζⱼ)ⱼ are the P1 finite element functions such that ζⱼ((l-1)h)=δⱼₗ
         - t = (Lt-1)*h
 =#
-function schrodinger_gaussian_cross_residual(h::Real, Lt::Int, k::Int, l::Int, G0, G1, HG0, HG1)
+function schrodinger_gaussian_cross_residual(h::Real, Lt::Int, k::Int, l::Int,
+                G0::AbstractWavePacket, G1::AbstractWavePacket, HG0::AbstractWavePacket, HG1::AbstractWavePacket)
     TS = promote_type(core_type(G0), core_type(G1), core_type(HG0), core_type(HG1))
     S = zero(complex(TS))
 
@@ -46,7 +47,8 @@ end
         - The (ζⱼ)ⱼ are the P1 finite element functions such that ζⱼ((l-1)h)=δⱼₗ
         - t = (Lt-1)*h
 =#
-function schrodinger_gaussian_square_residual(h::Real, Lt::Int, k::Int, G0, HG0)
+function schrodinger_gaussian_square_residual(h::Real, Lt::Int, k::Int,
+                G0::AbstractWavePacket, HG0::AbstractWavePacket)
     
     # |i∂ₜ|^2
     S = fe_k_factor(h, 0, 0) * norm2_L2(G0)
@@ -87,7 +89,7 @@ function SchGaussianLocalGradientCFG(::Type{Gtype}, Lt::Int, X::AbstractVector{T
     return SchGaussianLocalGradientCFG(X0, cfg_gradient)
 end
 function schrodinger_gaussian_residual_local_gradient!(::Type{Gtype}, ∇::AbstractVector{T}, a::T, b::T, Lt::Int, k::Int,
-                                        apply_op, Gf, Gg, X::AbstractVector{T},
+                                        apply_op, Gf::AbstractMatrix{<:AbstractWavePacket}, Gg::AbstractMatrix{<:AbstractWavePacket}, X::AbstractVector{T},
                                         cfg=SchGaussianLocalGradientCFG(Gtype, Lt, X)) where{Gtype<:AbstractWavePacket, T<:Real}
     psize = param_size(Gtype)
     if !(1 <= k <= Lt)
@@ -120,7 +122,7 @@ function schrodinger_gaussian_residual_local_gradient!(::Type{Gtype}, ∇::Abstr
 
         # Linear part
         for l=max(1,k-1):min(Lt,k+1)
-            S -= @views 2 * real(schrodinger_gaussian_cross_residual(h, Lt, k, l, G, Gg[:, l], HG, Gf[:, l]))
+            S -= @views 2 * real(schrodinger_gaussian_cross_residual(h, Lt, k, l, G, WavePacketArray(Gg[:, l]), HG, WavePacketArray(Gf[:, l])))
         end
 
         return S

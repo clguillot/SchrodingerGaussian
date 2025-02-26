@@ -13,7 +13,7 @@ end
 
 
 function gaussian_approx_gradient_and_metric!(::Type{Gtype}, ∇::Vector{T}, A::Matrix{T},
-                                        G_list,
+                                        G_list::AbstractWavePacket,
                                         X::Vector{T},
                                         cfg=GaussianApproxGradientAndMetricCFG(Gtype, X)) where{Gtype<:AbstractWavePacket, T<:Real}
     psize = param_size(Gtype)
@@ -57,7 +57,7 @@ function GaussianApproxCFG(::Type{Gtype}, ::Type{T}) where{Gtype<:AbstractWavePa
     return GaussianApproxCFG(U, X, ∇, d, A, cfg_gradient, cfg)
 end
 
-function gaussian_approx(::Type{Gtype}, ::Type{T}, G_list,
+function gaussian_approx(::Type{Gtype}, ::Type{T}, G_list::AbstractWavePacket,
                             G_initial_guess::Gtype,
                             cfg=GaussianApproxCFG(Gtype, T);
                             rel_tol::T=sqrt(eps(T)), maxiter::Int=1000, verbose::Bool=false) where{Gtype<:AbstractWavePacket, T<:Real}

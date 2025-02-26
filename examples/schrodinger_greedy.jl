@@ -38,10 +38,10 @@ function test_schrodinger_greedy(a::T, b::T, Lt, nb_terms::Int, newton_nb_iter::
 
         G_list, res_list = schrodinger_gaussian_greedy(Gtype, T, a, b, Lt, G0, apply_op, nb_terms; maxiter=newton_nb_iter, verbose=true, fullverbose=false)
 
-        M = 20.0
+        M = 30.0
         Lx = 4096
         hx = 2*M / (Lx+1)
-        U = schrodinger_sine(a, b, Lt, G0, v, M, Lx)
+        U = schrodinger_sine(a, b, Lt, WavePacketArray(G0), v, M, Lx)
 
         if plot_resut
             x_list = T.(-10:0.02:10)
@@ -49,9 +49,9 @@ function test_schrodinger_greedy(a::T, b::T, Lt, nb_terms::Int, newton_nb_iter::
             norm_list = zeros(Lt)
             g = @gif for k in 1:Lt
                 t = a + (k-1) * (b-a)/(Lt-1)
-                G = zeros(Gtype, nb_terms)
+                G = WavePacketArray(zeros(Gtype, nb_terms))
                 for j=1:nb_terms
-                    G[j] = inv_fourier(unitary_product(2*t, fourier(G_list[j, k])))
+                    G.g[j] = inv_fourier(unitary_product(2*t, fourier(G_list[j, k])))
                 end
                 t_list[k] = t
                 norm_list[k] = norm_L2(G)
