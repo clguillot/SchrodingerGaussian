@@ -42,58 +42,66 @@ function schrodinger_gaussian_greedy(::Type{Gtype}, ::Type{T}, a::T, b::T, Lt::I
     Λ = zeros(Complex{T}, nb_terms) #Coefficients
     res_list = zeros(T, nb_terms)
 
-    for iter=1:nb_terms
-        verbose && println("Computing term $iter...")
-        G[iter, :], _ = @views schrodinger_best_gaussian(Gtype, T, a, b, Lt, WavePacketArray(G0_[1 : n0 + iter - 1]), apply_op,
-                Gf_[1:iter-1, :], Gg_[1:iter-1, :], abs_tol, cfg;
-                maxiter=maxiter, verbose=fullverbose)
+    blas_nb_threads = BLAS.get_num_threads()
+
+    try
+        BLAS.set_num_threads(1)
         
-        #Packs the result
-        for k=1:Lt
-            pack_gaussian_parameters!((@view X[:, iter]), G[iter, k], (k-1) * psize + 1)
-        end
-
-        #Computes the residual
-        #PDE
-        GramMatrix[iter, iter] = @views schrodinger_gaussian_residual_sesquilinear_part(Gtype, a, b, Lt, apply_op, X[:, iter], X[:, iter])
-        for p=1:iter-1
-            μ = @views schrodinger_gaussian_residual_sesquilinear_part(Gtype, a, b, Lt, apply_op, X[:, p], X[:, iter])
-            GramMatrix[p, iter] = μ
-            GramMatrix[iter, p] = conj(μ)
-        end
-        F[iter] = conj(@views schrodinger_gaussian_residual_linear_part(Gtype, a, b, Lt, WavePacketArray(Ginit), apply_op, Gf, Gg, X[:, iter]))
-
-        Λ[1:iter] = GramMatrix[1:iter, 1:iter] \ F[1:iter]
-        # Λ[1:iter] = ones(iter)
-        res = real(dot(Λ[1:iter], GramMatrix[1:iter, 1:iter], Λ[1:iter]) - 2 * dot(F[1:iter], Λ[1:iter]) + C0)
-        verbose && println("Residual = $res")
-        res_list[iter] = res
-        # println("Λ = ", Λ[1:iter])
-
-        # display(GramMatrix)
-
-        #Fills the right member
-        for j=1:iter
+        for iter=1:nb_terms
+            verbose && println("Computing term $iter...")
+            G[iter, :], _ = @views schrodinger_best_gaussian(Gtype, T, a, b, Lt, WavePacketArray(G0_[1 : n0 + iter - 1]), apply_op,
+                    Gf_[1:iter-1, :], Gg_[1:iter-1, :], abs_tol, cfg;
+                    maxiter=maxiter, verbose=fullverbose)
+            
+            #Packs the result
             for k=1:Lt
-                g = -Λ[j] * @views unpack_gaussian_parameters(Gtype, X[:, j], (k-1)*psize + 1)
-                t = a + (k-1)/(Lt-1) * (b - a)
-                Gf_[j, k] = apply_op(t, g)
-                Gg_[j, k] = g
+                pack_gaussian_parameters!((@view X[:, iter]), G[iter, k], (k-1) * psize + 1)
             end
-            g = -Λ[j] * @views unpack_gaussian_parameters(Gtype, X[:, j])
-            G0_[n0 + j] = g
+
+            #Computes the residual
+            #PDE
+            GramMatrix[iter, iter] = @views schrodinger_gaussian_residual_sesquilinear_part(Gtype, a, b, Lt, apply_op, X[:, iter], X[:, iter])
+            for p=1:iter-1
+                μ = @views schrodinger_gaussian_residual_sesquilinear_part(Gtype, a, b, Lt, apply_op, X[:, p], X[:, iter])
+                GramMatrix[p, iter] = μ
+                GramMatrix[iter, p] = conj(μ)
+            end
+            F[iter] = conj(@views schrodinger_gaussian_residual_linear_part(Gtype, a, b, Lt, WavePacketArray(Ginit), apply_op, Gf, Gg, X[:, iter]))
+
+            Λ[1:iter] = GramMatrix[1:iter, 1:iter] \ F[1:iter]
+            # Λ[1:iter] = ones(iter)
+            res = real(dot(Λ[1:iter], GramMatrix[1:iter, 1:iter], Λ[1:iter]) - 2 * dot(F[1:iter], Λ[1:iter]) + C0)
+            verbose && println("Residual = $res")
+            res_list[iter] = res
+            # println("Λ = ", Λ[1:iter])
+
+            # display(GramMatrix)
+
+            #Fills the right member
+            for j=1:iter
+                for k=1:Lt
+                    g = -Λ[j] * @views unpack_gaussian_parameters(Gtype, X[:, j], (k-1)*psize + 1)
+                    t = a + (k-1)/(Lt-1) * (b - a)
+                    Gf_[j, k] = apply_op(t, g)
+                    Gg_[j, k] = g
+                end
+                g = -Λ[j] * @views unpack_gaussian_parameters(Gtype, X[:, j])
+                G0_[n0 + j] = g
+            end
+
+            # res0 = gaussian_approx_residual_constant_part(G0_)
+            # println("Residual 0 = $res0")
+
+            verbose && println()
         end
 
-        # res0 = gaussian_approx_residual_constant_part(G0_)
-        # println("Residual 0 = $res0")
-
-        verbose && println()
-    end
-
-    for iter=1:nb_terms
-        for k=1:Lt
-            G[iter, k] = Λ[iter] * @views unpack_gaussian_parameters(Gtype, X[:, iter], (k-1)*psize + 1)
+        for iter=1:nb_terms
+            for k=1:Lt
+                G[iter, k] = Λ[iter] * @views unpack_gaussian_parameters(Gtype, X[:, iter], (k-1)*psize + 1)
+            end
         end
+    finally
+        BLAS.set_num_threads(blas_nb_threads)
     end
 
     return G, res_list
