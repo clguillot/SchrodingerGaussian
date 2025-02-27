@@ -140,6 +140,9 @@ function SchGaussianGradientCFG(::Type{Gtype}, Lt::Int, X::AbstractVector{T}) wh
     cfg_gradient = [SchGaussianLocalGradientCFG(Gtype, Lt, X) for _=1:nt]
     return SchGaussianGradientCFG(Y, fg, cfg0, cfg_gradient)
 end
+#=
+    
+=#
 function schrodinger_gaussian_gradient!(::Type{Gtype}, ∇::AbstractVector{T},
                 a::T, b::T, Lt::Int, Ginit::AbstractWavePacket, apply_op,
                 Gf::AbstractMatrix{<:AbstractWavePacket}, Gg::AbstractMatrix{<:AbstractWavePacket}, X::AbstractVector{T},
@@ -152,21 +155,42 @@ function schrodinger_gaussian_gradient!(::Type{Gtype}, ∇::AbstractVector{T},
         throw(DimensionMismatch("∇ must be a Vector of size $(psize * Lt) but has size $(length(∇))"))
     end
 
+    h = (b-a)/(Lt-1)
+    res_atomic = Atomic{T}(zero(T))
     #PDE residual
     @threads :static for k in 1:Lt
-        kb = threadid()
+        # Residual
+        Gk = unpack_gaussian_parameters(Gtype, X, (k-1)*psize + 1)
+        HGk = apply_op(a + (k-1)*h, Gk)
+        val = schrodinger_gaussian_square_residual(h, Lt, k, Gk, HGk)
+        for l=max(1,k-1):min(Lt,k+1)
+            val -= @views 2 * real(schrodinger_gaussian_cross_residual(h, Lt, k, l, Gk, WavePacketArray(Gg[:, l]), HGk, WavePacketArray(Gf[:, l])))
+        end
+        if k < Lt
+            Gkp1 = unpack_gaussian_parameters(Gtype, X, k*psize + 1)
+            HGkp1 = apply_op(a + k*h, Gkp1)
+            val += 2 * real(schrodinger_gaussian_cross_residual(h, Lt, k, k+1, Gk, Gkp1, HGk, HGkp1))
+        end
+        atomic_add!(res_atomic, val)
 
+        # Gradient
+        kb = threadid()
         ∇loc = @view ∇[(k-1)*psize + 1 : k*psize]
         schrodinger_gaussian_residual_local_gradient!(Gtype, ∇loc, a, b, Lt, k, apply_op, Gf, Gg, X, cfg.cfg_gradient[kb])
         ∇loc .*= (b-a)
     end
+    res = res_atomic[]
+    res *= (b - a)
 
     #Initial condition
+    # Residual
+    res += gaussian_approx_residual(unpack_gaussian_parameters(Gtype, X), Ginit)
+    # Gradient
     @views copy!(cfg.Y, X[1 : psize])
     gaussian_approx_gradient!(Gtype, cfg.fg, Ginit, cfg.Y, cfg.cfg0)
     @views ∇[1 : psize] .+= cfg.fg
 
-    return ∇
+    return res, ∇
 end
 
 #=

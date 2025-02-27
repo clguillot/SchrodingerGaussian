@@ -24,8 +24,7 @@ function schrodinger_gaussian_linesearch(::Type{Gtype}, U::Vector{T}, ∇::Vecto
     end
     function ϕdϕ(α)
         @. U = X + α * d
-        val = schrodinger_gaussian_residual(Gtype, a, b, Lt, G0, apply_op, Gf, Gg, U)
-        schrodinger_gaussian_gradient!(Gtype, ∇, a, b, Lt, G0, apply_op, Gf, Gg, U, cfg)
+        val, _ = schrodinger_gaussian_gradient!(Gtype, ∇, a, b, Lt, G0, apply_op, Gf, Gg, U, cfg)
         return (val, dot(d, ∇))
     end
 
