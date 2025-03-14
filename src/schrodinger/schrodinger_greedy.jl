@@ -113,7 +113,7 @@ end
 
 =#
 function schrodinger_gaussian_greedy_timestep(::Type{Gtype}, ::Type{T}, a::T, b::T, Lt::Int, nb_timesteps::Int,
-    Ginit::AbstractVector{Gtype}, apply_op, nb_greedy_terms::Int;
+    Ginit::AbstractWavePacket, apply_op, nb_greedy_terms::Int;
     progressbar::Bool=false, maxiter::Int = 1000, verbose::Bool=false, fullverbose::Bool=false) where{Gtype<:AbstractWavePacket, T<:AbstractFloat}
 
     res = zero(T)
@@ -126,8 +126,8 @@ function schrodinger_gaussian_greedy_timestep(::Type{Gtype}, ::Type{T}, a::T, b:
         a_ = a + (k1-1)*h
         b_ = a + (k2-1)*h
         lt_ = k2 - k1 + 1
-        G0_ = (p == 1) ? Ginit : @view G[:, k1]
-        G_block, res_list = schrodinger_gaussian_greedy(Gtype, T, a_, b_, lt_, G0_, apply_op, nb_greedy_terms; maxiter=maxiter, verbose=verbose, fullverbose=fullverbose)
+        G0_ = (p == 1) ? Ginit : WavePacketSum(@view G[:, k1])
+        G_block, res_list = schrodinger_gaussian_greedy(Gtype, T, a_, b_, lt_, G0_, apply_op, nb_greedy_terms; greedy_orthogonal=false, maxiter=maxiter, verbose=verbose, fullverbose=fullverbose)
         @views G[:, k1:k2] .= G_block
         res += sqrt(res_list[end])
     end
