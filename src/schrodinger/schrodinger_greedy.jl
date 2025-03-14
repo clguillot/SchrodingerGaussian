@@ -12,15 +12,13 @@
     Return G::Vector{<:GaussianWavePacket1D}
 =#
 function schrodinger_gaussian_greedy(::Type{Gtype}, ::Type{T}, a::T, b::T, Lt::Int,
-                Ginit::AbstractVector{Gtype}, apply_op, nb_terms::Int;
-                maxiter::Int = 1000, verbose::Bool=false, fullverbose::Bool=false) where{Gtype<:AbstractWavePacket, T<:AbstractFloat}
+                Ginit::AbstractWavePacket, apply_op, nb_terms::Int;
+                maxiter::Int = 1000, verbose::Bool=false, fullverbose::Bool=false, greedy_orthogonal::Bool=true) where{Gtype<:AbstractWavePacket, T<:AbstractFloat}
     
     verbose = verbose || fullverbose
     psize = param_size(Gtype)
 
-    n0 = length(Ginit)
-    G0_ = zeros(eltype(Ginit), n0 + nb_terms)
-    @views G0_[1 : n0] = Ginit
+    G0_ = zeros(Gtype, nb_terms)
 
     Tf = typeof(apply_op(a, zero(Gtype)))
     Gf_ = fill(apply_op(a, zero(Gtype)), nb_terms, Lt)
@@ -37,7 +35,7 @@ function schrodinger_gaussian_greedy(::Type{Gtype}, ::Type{T}, a::T, b::T, Lt::I
     cfg = SchBestGaussianCFG(Gtype, T, Lt)
 
     #Orthogonal greedy data
-    C0 = gaussian_approx_residual_constant_part(WavePacketArray(Ginit))
+    C0 = gaussian_approx_residual_constant_part(Ginit)
     GramMatrix = zeros(Complex{T}, nb_terms, nb_terms)
     F = zeros(Complex{T}, nb_terms)
     Λ = zeros(Complex{T}, nb_terms) #Coefficients
@@ -50,7 +48,7 @@ function schrodinger_gaussian_greedy(::Type{Gtype}, ::Type{T}, a::T, b::T, Lt::I
 
         for iter=1:nb_terms
             verbose && println("Computing term $iter...")
-            G[iter, :], _ = @views schrodinger_best_gaussian(Gtype, T, a, b, Lt, G0_[1 : n0 + iter - 1], apply_op,
+            G[iter, :], _ = @views schrodinger_best_gaussian(Gtype, T, a, b, Lt, Ginit + WavePacketSum(G0_[1 : iter-1]), apply_op,
                     Gf_[1:iter-1, :], Gg_[1:iter-1, :], abs_tol, cfg;
                     maxiter=maxiter, verbose=fullverbose)
             
@@ -67,10 +65,13 @@ function schrodinger_gaussian_greedy(::Type{Gtype}, ::Type{T}, a::T, b::T, Lt::I
                 GramMatrix[p, iter] = μ
                 GramMatrix[iter, p] = conj(μ)
             end
-            F[iter] = conj(@views schrodinger_gaussian_residual_linear_part(Gtype, a, b, Lt, WavePacketArray(Ginit), apply_op, Gf, Gg, X[:, iter]))
+            F[iter] = conj(@views schrodinger_gaussian_residual_linear_part(Gtype, a, b, Lt, Ginit, apply_op, Gf, Gg, X[:, iter]))
 
-            Λ[1:iter] = GramMatrix[1:iter, 1:iter] \ F[1:iter]
-            # Λ[1:iter] = ones(iter)
+            if greedy_orthogonal
+                Λ[1:iter] = GramMatrix[1:iter, 1:iter] \ F[1:iter]
+            else
+                Λ[1:iter] = ones(T, iter)
+            end
             res = real(dot(Λ[1:iter], GramMatrix[1:iter, 1:iter], Λ[1:iter]) - 2 * dot(F[1:iter], Λ[1:iter]) + C0)
             verbose && println("Residual = $res")
             res_list[iter] = res
@@ -87,7 +88,7 @@ function schrodinger_gaussian_greedy(::Type{Gtype}, ::Type{T}, a::T, b::T, Lt::I
                     Gg_[j, k] = g
                 end
                 g = -Λ[j] * @views unpack_gaussian_parameters(Gtype, X[:, j])
-                G0_[n0 + j] = g
+                G0_[j] = g
             end
 
             # res0 = gaussian_approx_residual_constant_part(G0_)
@@ -106,4 +107,30 @@ function schrodinger_gaussian_greedy(::Type{Gtype}, ::Type{T}, a::T, b::T, Lt::I
     end
 
     return G, res_list
+end
+
+#=
+
+=#
+function schrodinger_gaussian_greedy_timestep(::Type{Gtype}, ::Type{T}, a::T, b::T, Lt::Int, nb_timesteps::Int,
+    Ginit::AbstractVector{Gtype}, apply_op, nb_greedy_terms::Int;
+    progressbar::Bool=false, maxiter::Int = 1000, verbose::Bool=false, fullverbose::Bool=false) where{Gtype<:AbstractWavePacket, T<:AbstractFloat}
+
+    res = zero(T)
+    G = zeros(Gtype, nb_greedy_terms, Lt)
+    lt = fld(Lt, nb_timesteps)
+    h = (b-a) / (Lt-1)
+    for p in (progressbar ? ProgressBar(1:nb_timesteps) : 1:nb_timesteps)
+        k1 = (p-1)*lt + 1
+        k2 = (p == nb_timesteps) ? Lt : p*lt + 1
+        a_ = a + (k1-1)*h
+        b_ = a + (k2-1)*h
+        lt_ = k2 - k1 + 1
+        G0_ = (p == 1) ? Ginit : @view G[:, k1]
+        G_block, res_list = schrodinger_gaussian_greedy(Gtype, T, a_, b_, lt_, G0_, apply_op, nb_greedy_terms; maxiter=maxiter, verbose=verbose, fullverbose=fullverbose)
+        @views G[:, k1:k2] .= G_block
+        res += sqrt(res_list[end])
+    end
+
+    return G, res
 end

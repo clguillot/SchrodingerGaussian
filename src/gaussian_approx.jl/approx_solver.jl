@@ -57,16 +57,16 @@ function GaussianApproxCFG(::Type{Gtype}, ::Type{T}) where{Gtype<:AbstractWavePa
     return GaussianApproxCFG(U, X, ∇, d, A, cfg_gradient, cfg)
 end
 
-function gaussian_approx(::Type{Gtype}, ::Type{T}, Ginit::AbstractVector{Gtype},
+function gaussian_approx(::Type{Gtype}, ::Type{T}, Ginit::AbstractWavePacket,
                             cfg=GaussianApproxCFG(Gtype, T);
                             rel_tol::T=sqrt(eps(T)), maxiter::Int=1000, verbose::Bool=false) where{Gtype<:AbstractWavePacket, T<:Real}
     psize = param_size(Gtype)
-    abs_tol = rel_tol * norm_L2(WavePacketArray(Ginit))
+    abs_tol = rel_tol * norm_L2(Ginit)
 
     # Global optimization with respect to the linear parameter
-    j_max = argmax([abs(dot_L2(Ginit[j], WavePacketArray(Ginit))) for j in eachindex(Ginit)])
-    G0 = Ginit[j_max]
-    λ = dot_L2(G0, WavePacketArray(Ginit)) / norm2_L2(G0) 
+
+    G0 = argmin(g -> norm2_L2(g - Ginit), Ginit)
+    λ = dot_L2(G0, Ginit) / norm2_L2(G0)
     X = pack_gaussian_parameters!(cfg.X, λ * G0)
 
     U = cfg.U
@@ -77,7 +77,7 @@ function gaussian_approx(::Type{Gtype}, ::Type{T}, Ginit::AbstractVector{Gtype},
 
         verbose && println("Iteration $iter :")
 
-        ∇, A = gaussian_approx_gradient_and_metric!(Gtype, cfg.∇, cfg.A, WavePacketArray(Ginit), X, cfg.cfg)
+        ∇, A = gaussian_approx_gradient_and_metric!(Gtype, cfg.∇, cfg.A, Ginit, X, cfg.cfg)
         chA = cholesky(Symmetric(SMatrix{psize, psize}(A)))
         Sd = chA \ SVector{psize}(∇)
         res = dot(Sd, ∇)
@@ -85,17 +85,17 @@ function gaussian_approx(::Type{Gtype}, ::Type{T}, Ginit::AbstractVector{Gtype},
 
         function ϕ(α)
             @. U = X + α * d
-            return gaussian_approx_residual(unpack_gaussian_parameters(Gtype, U), WavePacketArray(Ginit))
+            return gaussian_approx_residual(unpack_gaussian_parameters(Gtype, U), Ginit)
         end
         function dϕ(α)
             @. U = X + α * d
-            gaussian_approx_gradient!(Gtype, ∇, WavePacketArray(Ginit), U, cfg.cfg_gradient)
+            gaussian_approx_gradient!(Gtype, ∇, Ginit, U, cfg.cfg_gradient)
             return dot(cfg.d, cfg.∇)
         end
         function ϕdϕ(α)
             @. U = X + α * d
-            val = gaussian_approx_residual(unpack_gaussian_parameters(Gtype, U), WavePacketArray(Ginit))
-            gaussian_approx_gradient!(Gtype, ∇, WavePacketArray(Ginit), U, cfg.cfg_gradient)
+            val = gaussian_approx_residual(unpack_gaussian_parameters(Gtype, U), Ginit)
+            gaussian_approx_gradient!(Gtype, ∇, Ginit, U, cfg.cfg_gradient)
             return (val, dot(d, ∇))
         end
 
@@ -131,6 +131,6 @@ function gaussian_approx(::Type{Gtype}, ::Type{T}, Ginit::AbstractVector{Gtype},
     end
 
     G = unpack_gaussian_parameters(Gtype, X)
-    res = norm2_L2(G) + norm2_L2(WavePacketArray(Ginit)) - 2 * real(dot_L2(G, WavePacketArray(Ginit)))
+    res = norm2_L2(G) + norm2_L2(Ginit) - 2 * real(dot_L2(G, Ginit))
     return G, res
 end

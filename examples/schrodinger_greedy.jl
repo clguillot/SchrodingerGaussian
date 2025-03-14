@@ -15,29 +15,23 @@ function test_schrodinger_greedy(a::T, b::T, Lt, nb_terms::Int, newton_nb_iter::
 
     Gtype = GaussianWavePacket1D{Complex{T}, Complex{T}, T, T}
 
-    G0 = [GaussianWavePacket1D(complex(1.0), complex(1.0), 6.0, -1.0)]
+    G0 = GaussianWavePacket1D(complex(1.0), complex(1.0), 6.0, -1.0)
+    G0 = inv(norm_L2(G0)) * G0
     # G0 = [GaussianWavePacket1D(complex(0.5), complex(8.0), 1/sqrt(2.0), 0.0)]
     # G0 = [GaussianWavePacket1D(complex(1.0), complex(1.0), 0.0, 0.0)]
-    
-    Gf = zeros(Gtype, 0, Lt)
-    # for k in eachindex(Gf)
-    #     t = a + (k-1)/(Lt-1)*(b-a)
-    #     Gf[1, k] = Gaussian{T}(0.5*exp(t), 1.0, 5.0, -1.0)
-    # end
 
-    # Gv = Gaussian1D(1.0, 1.0, 0.0)
-    # v(x) = Gv(x)
+    Gv = Gaussian1D(1.0, 1.0, 0.0)
+    v(x) = Gv(x)
     # v(x) = x^4 - x^2
-    Gv1 = Gaussian1D(1.0, 1.0, 2.0)
-    Gv2 = Gaussian1D(1.0, 1.0, -2.0)
-    v(x) = Gv1(x) + Gv2(x)
+    # Gv1 = Gaussian1D(1.0, 1.0, 2.0)
+    # Gv2 = Gaussian1D(1.0, 1.0, -2.0)
+    # v(x) = Gv1(x) + Gv2(x)
 
-    G_list, res_list = schrodinger_gaussian_greedy(Gtype, T, a, b, Lt, G0, apply_op, nb_terms; maxiter=newton_nb_iter, verbose=true, fullverbose=false)
+    G_list, res_list = schrodinger_gaussian_greedy(Gtype, T, a, b, Lt, G0, apply_op, nb_terms;greedy_orthogonal=false, maxiter=newton_nb_iter, verbose=true, fullverbose=false)
 
-    M = 30.0
-    Lx = 4096
-    hx = 2*M / (Lx+1)
-    U = schrodinger_sine(a, b, Lt, WavePacketArray(G0), v, M, Lx)
+    # M = 30.0
+    # Lx = 4096
+    # U = schrodinger_sine(a, b, Lt, WavePacketArray(G0), v, M, Lx)
 
     if plot_resut
         x_list = T.(-10:0.02:10)
@@ -45,28 +39,26 @@ function test_schrodinger_greedy(a::T, b::T, Lt, nb_terms::Int, newton_nb_iter::
         norm_list = zeros(Lt)
         g = @gif for k in 1:Lt
             t = a + (k-1) * (b-a)/(Lt-1)
-            G = WavePacketArray(zeros(Gtype, nb_terms))
-            for j=1:nb_terms
+            G = WavePacketSum(zeros(Gtype, nb_terms))
+            for j in 1:nb_terms
                 G.g[j] = inv_fourier(unitary_product(2*t, fourier(G_list[j, k])))
             end
             t_list[k] = t
             norm_list[k] = norm_L2(G)
             fgx = G.(x_list)
             fx = abs2.(fgx)
-            # fx_re = real.(fgx)
-            # fx_im = imag.(fgx)
             fx_v = v.(x_list)
 
-            f_ref = zeros(length(x_list))
-            for j in eachindex(x_list)
-                x = x_list[j]
-                μ = complex(0.0)
-                for p in 1:Lx
-                    μ += U[p, k] * sin(π * p * (x + M) / (2*M))
-                end
-                f_ref[j] = abs2(μ)
-            end
-            plot(x_list, [fx, fx_v, f_ref], legend=:none, ylims=(-0.4, 2.0))
+            # f_ref = zeros(length(x_list))
+            # for j in eachindex(x_list)
+            #     x = x_list[j]
+            #     μ = complex(0.0)
+            #     for p in 1:Lx
+            #         μ += U[p, k] * sin(π * p * (x + M) / (2*M))
+            #     end
+            #     f_ref[j] = abs2(μ)
+            # end
+            plot(x_list, [fx, fx_v#=, f_ref=#], legend=:none, ylims=(-0.4, 2.0))
         end fps=30 every (max(round(Int, Lt / (30 * (b-a))), 1))
         display(g)
 
@@ -74,7 +66,7 @@ function test_schrodinger_greedy(a::T, b::T, Lt, nb_terms::Int, newton_nb_iter::
 
         p = plot()
         plot!(p, t_list, norm_list; label=LaTeXString("\$ \\Vert ψ(t) \\Vert _{L^2}\$"))
-        plot!(p, t_list, fill(norm_L2(G0[1]), Lt); label=LaTeXString("\$ \\Vert g_0 \\Vert _{L^2}\$"))
+        plot!(p, t_list, fill(norm_L2(G0), Lt); label=LaTeXString("\$ \\Vert g_0 \\Vert _{L^2}\$"))
         display(p)
         # savefig("norm.pdf")
 
@@ -93,13 +85,4 @@ function test_schrodinger_greedy(a::T, b::T, Lt, nb_terms::Int, newton_nb_iter::
         # display(p)
         # savefig("state.pdf")
     end
-
-    println("Test application :")
-    display(apply_op(1.0, G0[1]))
-    
-    Gend = G_list[1, 1]
-    @printf("(%.12f%+.12fi)exp(-(%.12f%+.12fi)/2(x%+.12f)^2%+.12fxi)\n", real(Gend.λ), imag(Gend.λ), real(Gend.z), imag(Gend.z), -Gend.q, Gend.p)
-
-    Gend = G_list[1, end]
-    @printf("(%.12f%+.12fi)exp(-(%.12f%+.12fi)/2(x%+.12f)^2%+.12fxi)\n", real(Gend.λ), imag(Gend.λ), real(Gend.z), imag(Gend.z), -Gend.q, Gend.p)
 end

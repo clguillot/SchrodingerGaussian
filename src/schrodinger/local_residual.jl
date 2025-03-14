@@ -122,7 +122,7 @@ function schrodinger_gaussian_residual_local_gradient!(::Type{Gtype}, ∇::Abstr
 
         # Linear part
         for l=max(1,k-1):min(Lt,k+1)
-            S -= @views 2 * real(schrodinger_gaussian_cross_residual(h, Lt, k, l, G, WavePacketArray(Gg[:, l]), HG, WavePacketArray(Gf[:, l])))
+            S -= @views 2 * real(schrodinger_gaussian_cross_residual(h, Lt, k, l, G, WavePacketSum(Gg[:, l]), HG, WavePacketSum(Gf[:, l])))
         end
 
         return S

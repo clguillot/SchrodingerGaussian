@@ -14,7 +14,7 @@ using DiffResults
 
 using HermiteWavePackets
 
-import InteractiveUtils: @code_warntype
+using ProgressBars
 
 #=
     Basics
@@ -34,6 +34,7 @@ include("gaussian_approx.jl/approx_solver.jl")
 =#
 export schrodinger_best_gaussian
 export schrodinger_gaussian_greedy
+export schrodinger_gaussian_greedy_timestep
 include("schrodinger/schrodinger_solver.jl")
 include("schrodinger/schrodinger_greedy.jl")
 

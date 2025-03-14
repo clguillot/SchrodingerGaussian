@@ -72,9 +72,9 @@ end
 #=
     Provides the best gaussian approximation to
         i∂ₜu = H(t)u + f(t) + g(t) on (a, b)
-        u(a) = ∑ᵣG0[r]
+        u(a) = Ginit
     by minimizing the residual
-        |u(a) - ∑ᵣG0[r]|^2 + ∫_(a,b) dt |i∂ₜu(t) - H(t)u(t) - f(t) - g(t)|²
+        |u(a) - Ginit|^2 + ∫_(a,b) dt |i∂ₜu(t) - H(t)u(t) - f(t) - g(t)|²
     where
     - u = ∑ₖ G[k] ζₖ(t)
     - H(t)g = apply_op(t, g)
@@ -83,7 +83,7 @@ end
     Return G::Vector{<:GaussianWavePacket1D}
 =#
 function schrodinger_best_gaussian(::Type{Gtype}, ::Type{T}, a::T, b::T, Lt::Int,
-                                        Ginit::AbstractVector{Gtype}, apply_op,
+                                        Ginit::AbstractWavePacket, apply_op,
                                         Gf::AbstractMatrix{<:AbstractWavePacket}, Gg::AbstractMatrix{<:AbstractWavePacket},
                                         abs_tol::T,
                                         cfg=SchBestGaussianCFG(Gtype, T, Lt);
@@ -112,7 +112,7 @@ function schrodinger_best_gaussian(::Type{Gtype}, ::Type{T}, a::T, b::T, Lt::Int
 
         # Linear vector
         for l in max(1,k-1):min(Lt,k+1)
-            F[k] += @views schrodinger_gaussian_cross_residual(h, Lt, k, l, G, WavePacketArray(Gg[:, l]), HG, WavePacketArray(Gf[:, l]))
+            F[k] += @views schrodinger_gaussian_cross_residual(h, Lt, k, l, G, WavePacketSum(Gg[:, l]), HG, WavePacketSum(Gf[:, l]))
         end
 
         # Gram matrix
@@ -124,7 +124,7 @@ function schrodinger_best_gaussian(::Type{Gtype}, ::Type{T}, a::T, b::T, Lt::Int
     end
     # Initial condition
     F .*= (b - a)
-    F[1] += dot_L2(G_approx_init, WavePacketArray(Ginit))
+    F[1] += dot_L2(G_approx_init, Ginit)
     Gram .*= (b - a)
     Gram[1, 1] += dot_L2(G_approx_init, G_approx_init)
     Γ = Gram' \ F
@@ -146,17 +146,17 @@ function schrodinger_best_gaussian(::Type{Gtype}, ::Type{T}, a::T, b::T, Lt::Int
 
     # Global space-time iterations
     iter = 0
-    E0 = schrodinger_gaussian_residual(Gtype, a, b, Lt, WavePacketArray(Ginit), apply_op, Gf, Gg, X)
+    E0 = schrodinger_gaussian_residual(Gtype, a, b, Lt, Ginit, apply_op, Gf, Gg, X)
     while iter < maxiter
         iter += 1
         verbose && println("Iteration $iter on $maxiter :")
 
         #Natural Gradient descent step
-        schrodinger_gaussian_gradient_and_metric!(Gtype, ∇, A, a, b, Lt, WavePacketArray(Ginit), apply_op, Gf, Gg, X, cfg_metric)
+        schrodinger_gaussian_gradient_and_metric!(Gtype, ∇, A, a, b, Lt, Ginit, apply_op, Gf, Gg, X, cfg_metric)
         build_newton_direction!(Gtype, d, A, ∇, cfg_cholesky)
         res = sqrt(max(dot(d, ∇), zero(T)) / 2)
         @. d = T(-0.5) * d
-        α, E = schrodinger_gaussian_linesearch(Gtype, U, ∇, X, d, a, b, Lt, WavePacketArray(Ginit), apply_op, Gf, Gg, cfg_gradient)
+        α, E = schrodinger_gaussian_linesearch(Gtype, U, ∇, X, d, a, b, Lt, Ginit, apply_op, Gf, Gg, cfg_gradient)
         @. X += α * d
         verbose && println("res = $res")
 
@@ -174,5 +174,5 @@ function schrodinger_best_gaussian(::Type{Gtype}, ::Type{T}, a::T, b::T, Lt::Int
 
     #Unpacking the result
     G = [unpack_gaussian_parameters(Gtype, X, (k-1)*psize + 1) for k in 1:Lt]
-    return G, schrodinger_gaussian_residual(Gtype, a, b, Lt, WavePacketArray(Ginit), apply_op, Gf, Gg, X)
+    return G, schrodinger_gaussian_residual(Gtype, a, b, Lt, Ginit, apply_op, Gf, Gg, X)
 end

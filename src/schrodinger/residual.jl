@@ -28,7 +28,7 @@ function schrodinger_gaussian_residual(::Type{Gtype}, a::T, b::T, Lt::Int, Ginit
         # Single element part
         res += schrodinger_gaussian_square_residual(h, Lt, k, Gk, HGk)
         for l=max(1,k-1):min(Lt,k+1)
-            res -= @views 2 * real(schrodinger_gaussian_cross_residual(h, Lt, k, l, Gk, WavePacketArray(Gg[:, l]), HGk, WavePacketArray(Gf[:, l])))
+            res -= @views 2 * real(schrodinger_gaussian_cross_residual(h, Lt, k, l, Gk, WavePacketSum(Gg[:, l]), HGk, WavePacketSum(Gf[:, l])))
         end
 
         # Interaction part
@@ -107,7 +107,7 @@ function schrodinger_gaussian_residual_linear_part(::Type{Gtype}, a::T, b::T, Lt
         Gk = unpack_gaussian_parameters(Gtype, X, (k-1)*psize + 1)
         HGk = apply_op(a + (k-1)*h, Gk)
         for l=max(1,k-1):min(Lt,k+1)
-            val += @views schrodinger_gaussian_cross_residual(h, Lt, l, k, WavePacketArray(Gg[:, l]), Gk, WavePacketArray(Gf[:, l]), HGk)
+            val += @views schrodinger_gaussian_cross_residual(h, Lt, l, k, WavePacketSum(Gg[:, l]), Gk, WavePacketSum(Gf[:, l]), HGk)
         end
     end
     val *= (b - a)
@@ -164,7 +164,7 @@ function schrodinger_gaussian_gradient!(::Type{Gtype}, ∇::AbstractVector{T},
         HGk = apply_op(a + (k-1)*h, Gk)
         val = schrodinger_gaussian_square_residual(h, Lt, k, Gk, HGk)
         for l=max(1,k-1):min(Lt,k+1)
-            val -= @views 2 * real(schrodinger_gaussian_cross_residual(h, Lt, k, l, Gk, WavePacketArray(Gg[:, l]), HGk, WavePacketArray(Gf[:, l])))
+            val -= @views 2 * real(schrodinger_gaussian_cross_residual(h, Lt, k, l, Gk, WavePacketSum(Gg[:, l]), HGk, WavePacketSum(Gf[:, l])))
         end
         if k < Lt
             Gkp1 = unpack_gaussian_parameters(Gtype, X, k*psize + 1)
