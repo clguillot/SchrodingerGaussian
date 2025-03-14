@@ -15,8 +15,11 @@ function test_schrodinger_greedy(a::T, b::T, Lt, nb_terms::Int, newton_nb_iter::
 
     Gtype = GaussianWavePacket1D{Complex{T}, Complex{T}, T, T}
 
+    # G0 = GaussianWavePacket1D(complex(1.0), complex(1.0), 6.0, -1.0)
+    # G0 = inv(norm_L2(G0)) * G0
     G0 = GaussianWavePacket1D(complex(1.0), complex(1.0), 6.0, -1.0)
-    G0 = inv(norm_L2(G0)) * G0
+    G1 = GaussianWavePacket1D(complex(1.0), complex(1.0), 3.0, -1.0)
+    G0 = WavePacketSum([inv(norm_L2(G0)) * G0, G1])
     # G0 = [GaussianWavePacket1D(complex(0.5), complex(8.0), 1/sqrt(2.0), 0.0)]
     # G0 = [GaussianWavePacket1D(complex(1.0), complex(1.0), 0.0, 0.0)]
 
