@@ -65,7 +65,8 @@ function gaussian_approx(::Type{Gtype}, ::Type{T}, Ginit::AbstractWavePacket,
 
     # Global optimization with respect to the linear parameter
 
-    G0 = argmin(g -> norm2_L2(g - Ginit), Ginit)
+    G0 = argmin(g -> norm2_L2(Ginit - g), Ginit)
+    # G0 = argmax(g -> abs(dot_L2(g, Ginit)), Ginit)
     λ = dot_L2(G0, Ginit) / norm2_L2(G0)
     X = pack_gaussian_parameters!(cfg.X, λ * G0)
 
