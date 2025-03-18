@@ -6,7 +6,7 @@
 =#
 
 #=
-    Computes the residual |G1 - ∑ₖ Ginit[k]|^2 + (b-a) * ∫_(a,b) dt |(i∂ₜ-H(t)(∑ₖζₖ(t)Gk)|^2
+    Computes the residual |G1 - ∑ₖ Ginit[k]|^2 + (b-a) * ∫_(a,b) dt |(i∂ₜ-H(t)(∑ₖζₖ(t)Gk)|^2 - ...
         - (ζₖ)ₖ (k=0,...,Lt-1) are the Lt P1 finite element functions on (a, b)
         - For 1≤k≤Lt Gk is obtained by unpacking X[(k-1)*gaussian_param_size + 1 : k*gaussian_param_size]
         - H(t)g = apply_op(t, g) for any gaussian wave packet g
@@ -267,16 +267,24 @@ function schrodinger_gaussian_gradient_and_metric!(::Type{Gtype}, ∇::AbstractV
             @views Yk .= X[(k-1)*psize + 1 : k*psize]
             @views Yl .= X[(l-1)*psize + 1 : l*psize]
 
-            gaussian_approx_metric_topright_hessian!(Gtype, fh, Yk, Yl, cfg.cfg_metric[kb])
-            α = (b - a) * fe_k_factor(h, k, l)
-            if k==l && (k==1 || k==Lt)
-                @views @. A[Block(k, k)] = α / 4 * (fh + fh')
-            elseif k==l
-                @views @. A[Block(k, k)] = α / 2 * (fh + fh')
+            schrodinger_gaussian_residual_local_metric!(Gtype, fh, a, b, Lt, k, l, apply_op, X, X)
+            if k==l
+                @views A[Block(k, l)] .= Symmetric(fh)
             else
-                @views @. A[Block(k, l)] = α * fh
-                @views @. A[Block(l, k)] = α * fh'
+                @views A[Block(k, l)] .= fh
+                @views A[Block(l, k)] .= fh'
             end
+
+            # gaussian_approx_metric_topright_hessian!(Gtype, fh, Yk, Yl, cfg.cfg_metric[kb])
+            # α = (b - a) * fe_k_factor(h, k, l)
+            # if k==l && (k==1 || k==Lt)
+            #     @views @. A[Block(k, k)] = α / 4 * (fh + fh')
+            # elseif k==l
+            #     @views @. A[Block(k, k)] = α / 2 * (fh + fh')
+            # else
+            #     @views @. A[Block(k, l)] = α * fh
+            #     @views @. A[Block(l, k)] = α * fh'
+            # end
         end
     end
 

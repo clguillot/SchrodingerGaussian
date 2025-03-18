@@ -131,3 +131,66 @@ function schrodinger_gaussian_residual_local_gradient!(::Type{Gtype}, ∇::Abstr
     g(Y) = f(Y, t, h, Lt, k, apply_op, Gm1, Gp1, HGm1, HGp1, Gf, Gg)
     return ForwardDiff.gradient!(∇, g, X0, cfg.cfg_gradient, Val(false))
 end
+
+#=
+    
+=#
+# Metric config
+mutable struct SchGaussianLocalMetricCFG{T, GC, JC}
+    W::Vector{T}
+    U1::Vector{T}
+    U2::Vector{T}
+    gradient_cfg::GC
+    jacobian_cfg::JC
+end
+function SchGaussianLocalMetricCFG(::Type{Gtype}, Lt::Int, X1::AbstractVector{T}, X2::AbstractVector{T}) where{Gtype<:AbstractWavePacket, T<:Real}
+    psize = param_size(Gtype)
+    if length(X1) != Lt*psize
+        throw(DimensionMismatch("X1 must be a vector of size $(Lt*psize) but has size $(length(X1))"))
+    end
+    if length(X2) != Lt*psize
+        throw(DimensionMismatch("X2 must be a vector of size $(Lt*psize) but has size $(length(X2))"))
+    end
+    
+    W = zeros(T, psize)
+    U1 = zeros(T, psize)
+    U2 = zeros(T, psize)
+    jacobian_cfg = ForwardDiff.JacobianConfig(x -> nothing, W, U1, ForwardDiff.Chunk(2))
+    gradient_cfg = ForwardDiff.GradientConfig(jacobian_cfg, U2, ForwardDiff.Chunk(2))
+    return SchGaussianLocalMetricCFG(W, U1, U2, gradient_cfg, jacobian_cfg)
+end
+#=
+    Computes ∂ₓ₁∂ₓ₂E(X1, X2)
+=#
+function schrodinger_gaussian_residual_local_metric!(::Type{Gtype}, Htr::AbstractMatrix{T}, a::T, b::T, Lt::Int, k::Int, l::Int,
+                apply_op, X1::AbstractVector{T}, X2::AbstractVector{T},
+                cfg=SchGaussianLocalMetricCFG(Gtype, Lt, X1, X2)) where{Gtype<:AbstractWavePacket, T<:Real}
+    psize = param_size(Gtype)
+    if size(Htr) != (psize, psize)
+        throw(DimensionMismatch("Htr must be a square matrix of size $(psize)x$(psize) but has size $(size(Htr))"))
+    end
+    if length(X1) != Lt*psize
+        throw(DimensionMismatch("X1 must be a vector of size $(Lt*psize) but has size $(length(X1))"))
+    end
+    if length(X2) != Lt*psize
+        throw(DimensionMismatch("X2 must be a vector of size $(Lt*psize) but has size $(length(X2))"))
+    end
+
+    h = (b-a)/(Lt-1)
+    t1 = a + k*h
+    t2 = a + l*h
+    cfg.U1 .= @view X1[(k-1)*psize + 1 : k*psize]
+    cfg.U2 .= @view X2[(l-1)*psize + 1 : l*psize]
+
+    function f(Y1, Y2)
+        G1 = unpack_gaussian_parameters(Gtype, Y1)
+        HG1 = apply_op(t1, G1)
+        G2 = unpack_gaussian_parameters(Gtype, Y2)
+        HG2 = apply_op(t2, G2)
+        return real(schrodinger_gaussian_cross_residual(h, Lt, k, l, G1, G2, HG1, HG2))
+    end
+    ∇₁f!(∇, Y1, Y2) = ForwardDiff.gradient!(∇, Z -> f(Z, Y2), Y1, cfg.gradient_cfg, Val(false))
+    ForwardDiff.jacobian!(Htr, (∇, Z) -> ∇₁f!(∇, cfg.U1, Z), cfg.W, 
+        cfg.U2, cfg.jacobian_cfg, Val(false))
+    return Htr
+end
