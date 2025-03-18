@@ -20,7 +20,6 @@ function schrodinger_gaussian_greedy(::Type{Gtype}, ::Type{T}, a::T, b::T, Lt::I
 
     G0_ = zeros(Gtype, nb_terms)
 
-    Tf = typeof(apply_op(a, zero(Gtype)))
     Gf_ = fill(apply_op(a, zero(Gtype)), nb_terms, Lt)
     Gf = zeros(Gtype, 0, Lt)
 

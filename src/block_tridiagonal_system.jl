@@ -15,7 +15,7 @@
 
     (see https://www.intel.com/content/www/us/en/docs/onemkl/cookbook/2021-4/factor-block-tridiag-symm-pos-def-matrices.html)
 =#
-struct BlockCholeskyStaticConfig{T<:Real}
+struct BlockCholeskyStaticConfig{T<:Number}
     #Matrix buffers
     Id::Diagonal{T, Vector{T}}
     V::Matrix{T}
@@ -28,7 +28,7 @@ struct BlockCholeskyStaticConfig{T<:Real}
     U::Vector{UpperTriangular{T, Matrix{T}}} #Diagonal blocks
     B_up::Vector{Matrix{T}}  #Upper diagonal blocks
 end
-function BlockCholeskyStaticConfig(Y::Vector{T}, ::Val{block_size}) where{T<:Real, block_size}
+function BlockCholeskyStaticConfig(Y::Vector{T}, ::Val{block_size}) where{T<:Number, block_size}
     Id = Diagonal(ones(T, block_size))
     V = zeros(T, block_size, block_size)
     W = zeros(T, block_size, block_size)
@@ -41,7 +41,7 @@ function BlockCholeskyStaticConfig(Y::Vector{T}, ::Val{block_size}) where{T<:Rea
 
     return BlockCholeskyStaticConfig(Id, V, W, x, U, B_up)
 end
-function block_tridiagonal_cholesky_solver_static!(X::Vector{T}, A::BlockBandedMatrix{T}, Y::Vector{T}, ::Val{block_size}, cfg::BlockCholeskyStaticConfig=BlockCholeskyStaticConfig(Y, Val(block_size))) where{T<:Real, block_size}
+function block_tridiagonal_cholesky_solver_static!(X::Vector{T}, A::BlockBandedMatrix{T}, Y::Vector{T}, ::Val{block_size}, cfg::BlockCholeskyStaticConfig=BlockCholeskyStaticConfig(Y, Val(block_size))) where{T<:Number, block_size}
     (Lx, Ly) = size(A)
     nb_blocks = Lx ÷ block_size
     if Lx <= 0
