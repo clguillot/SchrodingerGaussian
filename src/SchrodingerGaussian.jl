@@ -27,7 +27,7 @@ include("block_tridiagonal_system.jl")
     Approximation
 =#
 export gaussian_approx
-include("gaussian_approx.jl/approx_solver.jl")
+include("approx/approx_solver.jl")
 
 #=
     Solver for Schrodinger equation
