@@ -1,6 +1,7 @@
 module SchrodingerGaussian
 
 using Base.Threads
+using InteractiveUtils
 
 using LinearAlgebra
 using StaticArrays

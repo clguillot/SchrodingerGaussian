@@ -104,31 +104,29 @@ function schrodinger_gaussian_residual_local_gradient!(::Type{Gtype}, ∇::Abstr
 
     X0 = cfg.X0
     X0 .= @view X[(k-1)*psize + 1 : k*psize]
-    Gz = zero(unpack_gaussian_parameters(Gtype, X, (k-1)*psize + 1))
+    Gz = zero(Gtype)
 
     Gm1 = (k > 1) ? unpack_gaussian_parameters(Gtype, X, (k-2)*psize + 1) : Gz
     Gp1 = (k < Lt) ? unpack_gaussian_parameters(Gtype, X, k*psize + 1) : Gz
     HGm1 = apply_op(t-h, Gm1)
     HGp1 = apply_op(t+h, Gp1)
 
-    function f(Y, t, h, Lt, k, apply_op, Gm1, Gp1, HGm1, HGp1, Gf, Gg)
+    function f(Y, ::Type{Gtype}, t, h, Lt, k, apply_op, Gm1, Gp1, HGm1, HGp1, Gf, Gg) where Gtype
         G = unpack_gaussian_parameters(Gtype, Y)
         HG = apply_op(t, G)
-
+    
         # Quadratic part
         S = schrodinger_gaussian_square_residual(h, Lt, k, G, HG)
         S += 2 * real(schrodinger_gaussian_cross_residual(h, Lt, k, k-1, G, Gm1, HG, HGm1))
         S += 2 * real(schrodinger_gaussian_cross_residual(h, Lt, k, k+1, G, Gp1, HG, HGp1))
-
+    
         # Linear part
-        for l=max(1,k-1):min(Lt,k+1)
-            S -= @views 2 * real(schrodinger_gaussian_cross_residual(h, Lt, k, l, G, WavePacketSum(Gg[:, l]), HG, WavePacketSum(Gf[:, l])))
-        end
-
+        S -= 2 * @views sum(real(schrodinger_gaussian_cross_residual(h, Lt, k, l, G, WavePacketSum(Gg[:, l]), HG, WavePacketSum(Gf[:, l]))) for l in max(1,k-1):min(Lt,k+1))
+    
         return S
     end
-
-    g(Y) = f(Y, t, h, Lt, k, apply_op, Gm1, Gp1, HGm1, HGp1, Gf, Gg)
+    g(Y) = f(Y, Gtype, t, h, Lt, k, apply_op, Gm1, Gp1, HGm1, HGp1, Gf, Gg)
+    
     return ForwardDiff.gradient!(∇, g, X0, cfg.cfg_gradient, Val(false))
 end
 

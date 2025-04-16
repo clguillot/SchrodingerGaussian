@@ -1,7 +1,5 @@
 #=
-
     FINITE ELEMENTS FACTORS
-
 =#
 
 #=

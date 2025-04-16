@@ -262,7 +262,6 @@ function schrodinger_gaussian_gradient_and_metric!(::Type{Gtype}, ∇::AbstractV
             Yk = cfg.Yk[kb]
             Yl = cfg.Yl[kb]
             fh = cfg.fh[kb]
-            h = (b-a)/(Lt-1)
 
             @views Yk .= X[(k-1)*psize + 1 : k*psize]
             @views Yl .= X[(l-1)*psize + 1 : l*psize]
@@ -274,17 +273,6 @@ function schrodinger_gaussian_gradient_and_metric!(::Type{Gtype}, ∇::AbstractV
                 @views A[Block(k, l)] .= fh
                 @views A[Block(l, k)] .= fh'
             end
-
-            # gaussian_approx_metric_topright_hessian!(Gtype, fh, Yk, Yl, cfg.cfg_metric[kb])
-            # α = (b - a) * fe_k_factor(h, k, l)
-            # if k==l && (k==1 || k==Lt)
-            #     @views @. A[Block(k, k)] = α / 4 * (fh + fh')
-            # elseif k==l
-            #     @views @. A[Block(k, k)] = α / 2 * (fh + fh')
-            # else
-            #     @views @. A[Block(k, l)] = α * fh
-            #     @views @. A[Block(l, k)] = α * fh'
-            # end
         end
     end
 
