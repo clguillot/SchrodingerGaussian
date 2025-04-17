@@ -223,7 +223,7 @@ function SchGaussianGradientAndMetricCFG(::Type{Gtype}, Lt::Int, X::AbstractVect
     fh = [zeros(T, psize, psize) for _=1:nt]
     cfg0 = GaussianApproxGradientAndMetricCFG(Gtype, Yk[1])
     cfg_gradient = [SchGaussianLocalGradientCFG(Gtype, Lt, X) for _=1:nt]
-    cfg_metric = [GaussianApproxMetricTRHessCFG(Gtype, Yk[1], Yl[1]) for _=1:nt]
+    cfg_metric = [SchGaussianLocalMetricCFG(Gtype, Lt, X, X) for _=1:nt]
     return SchGaussianGradientAndMetricCFG(Yk, Yl, Y, fg0, fh0, fg, fh, cfg0, cfg_gradient, cfg_metric)
 end
 
@@ -266,7 +266,7 @@ function schrodinger_gaussian_gradient_and_metric!(::Type{Gtype}, ∇::AbstractV
             @views Yk .= X[(k-1)*psize + 1 : k*psize]
             @views Yl .= X[(l-1)*psize + 1 : l*psize]
 
-            schrodinger_gaussian_residual_local_metric!(Gtype, fh, a, b, Lt, k, l, apply_op, X, X)
+            schrodinger_gaussian_residual_local_metric!(Gtype, fh, a, b, Lt, k, l, apply_op, X, X, cfg.cfg_metric[kb])
             if k==l
                 @views A[Block(k, l)] .= Symmetric(fh)
             else

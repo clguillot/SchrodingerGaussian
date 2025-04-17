@@ -9,7 +9,7 @@ import LinearAlgebra.BLAS
 
 include("reference_solution.jl")
 
-function apply_op(t, G)
+function apply_op_1D(t, G)
     G1 = inv_fourier(unitary_product(fourier(G), SVector(2*t)))
     Gv = Gaussian(1.0, 1.0)
     G2 = Gv * G1
@@ -26,7 +26,7 @@ function test_schrodinger_greedy(a::T, b::T, Lt, nb_terms::Int, newton_nb_iter::
     Gv = Gaussian(1.0, 1.0)
     v(x) = Gv(x)
 
-    G_list, res_list = schrodinger_gaussian_greedy(Gtype, T, a, b, Lt, G0, apply_op, nb_terms;greedy_orthogonal=false, maxiter=newton_nb_iter, verbose=true, fullverbose=false)
+    G_list, res_list = schrodinger_gaussian_greedy(Gtype, T, a, b, Lt, G0, apply_op_1D, nb_terms;greedy_orthogonal=false, maxiter=newton_nb_iter, verbose=true, fullverbose=false)
 
     # M = 30.0
     # Lx = 4096
