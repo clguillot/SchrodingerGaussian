@@ -110,25 +110,28 @@ function schrodinger_gaussian_greedy(a::T, b::T, Lt::Int,
     return G, res_list
 end
 
-function schrodinger_gaussian_greedy(dis::Discretization, pot::Potential) 
+function pot_to_applyop(pot)
     function apply_op(t,G)
         G1 = inv_fourier(unitary_product(fourier(G), SVector(2*t)))
-        Gout = Gaussian(0.0,1.0,0.0)
-        for Vg in pot.V
-            Gout = Gout + inv_fourier(unitary_product(fourier(Vg * G1), SVector(-2*t)))
-        end
+        Gout = inv_fourier(unitary_product(fourier(pot.V * G1), SVector(-2*t)))
         return Gout
     end
+    apply_op
+end
+
+function schrodinger_gaussian_greedy(dis::Discretization, pot::Potential) 
+    apply_op = pot_to_applyop(pot)
     schrodinger_gaussian_greedy(dis.t0,dis.tf,dis.Nt,dis.G0,apply_op,dis.nb_g;greedy_orthogonal=dis.greedy_orthogonal, maxiter=dis.nb_newton)
 end
 
 #=
 
 =#
-function schrodinger_gaussian_greedy_timestep(::Type{Gtype}, ::Type{T}, a::T, b::T, Lt::Int, nb_timesteps::Int,
-    Ginit::AbstractWavePacket, apply_op, nb_greedy_terms::Int;
-    progressbar::Bool=false, maxiter::Int = 1000, verbose::Bool=false, fullverbose::Bool=false) where{Gtype<:AbstractWavePacket, T<:AbstractFloat}
+function schrodinger_gaussian_greedy_timestep(a::T, b::T, Lt::Int, nb_timesteps::Int,
+    Ginit::AbstractWavePacket{D}, apply_op, nb_greedy_terms::Int;
+    progressbar::Bool=false, maxiter::Int = 1000, verbose::Bool=false, fullverbose::Bool=false) where{T<:AbstractFloat,D}
 
+    Gtype = GaussianWavePacket{D,Complex{T},Complex{T},T,T}
     res = zero(T)
     G = zeros(Gtype, nb_greedy_terms, Lt)
     lt = fld(Lt, nb_timesteps)
@@ -140,10 +143,19 @@ function schrodinger_gaussian_greedy_timestep(::Type{Gtype}, ::Type{T}, a::T, b:
         b_ = a + (k2-1)*h
         lt_ = k2 - k1 + 1
         G0_ = (p == 1) ? Ginit : WavePacketSum(@view G[:, k1])
-        G_block, res_list = schrodinger_gaussian_greedy(Gtype, T, a_, b_, lt_, G0_, apply_op, nb_greedy_terms; greedy_orthogonal=false, maxiter=maxiter, verbose=verbose, fullverbose=fullverbose)
+        G_block, res_list = schrodinger_gaussian_greedy(a_, b_, lt_, G0_, apply_op, nb_greedy_terms; greedy_orthogonal=false, maxiter, verbose, fullverbose)
         @views G[:, k1:k2] .= G_block
         res += sqrt(res_list[end])
     end
 
     return G, res
+end
+
+#=
+    Perform a greedy step on each interval [tₖ, tₖ₊₁] for k ∈ ⟦0,nb_timesteps-1⟧ and tₖ = k (dis.tf - dis.t0)
+=#
+function schrodinger_gaussian_greedy_timestep(dis::Discretization, pot::Potential, nb_timesteps;progressbar=true,verbose=true) 
+    apply_op = pot_to_applyop(pot)
+
+    schrodinger_gaussian_greedy_timestep(dis.t0,dis.tf,dis.Nt,nb_timesteps,dis.G0,apply_op,dis.nb_g; maxiter=dis.nb_newton, progressbar, verbose)
 end
