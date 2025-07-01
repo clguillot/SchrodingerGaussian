@@ -113,10 +113,7 @@ end
 function pot_to_applyop(pot)
     function apply_op(t,G)
         G1 = inv_fourier(unitary_product(fourier(G), SVector(2*t)))
-        Gout = Gaussian(0.0,1.0,0.0)
-        for Vg in pot.V
-            Gout = Gout + inv_fourier(unitary_product(fourier(Vg * G1), SVector(-2*t)))
-        end
+        Gout = inv_fourier(unitary_product(fourier(pot.V * G1), SVector(-2*t)))
         return Gout
     end
     apply_op
