@@ -11,8 +11,9 @@ include("reference_solution.jl")
 
 function apply_op_1D(t, G)
     G1 = inv_fourier(unitary_product(fourier(G), SVector(2*t)))
-    Gv = Gaussian(1.0, 1.0)
-    G2 = Gv * G1
+    Gv1 = Gaussian(1.0, 1.0, -2.0)
+    Gv2 = Gaussian(0.0, 1.0, 2.0)
+    G2 = Gv1 * G1 + Gv2 * G1
     return inv_fourier(unitary_product(fourier(G2), SVector(-2*t)))
 end
 
@@ -20,10 +21,10 @@ function test_schrodinger_greedy(a::T, b::T, Lt, nb_terms::Int, newton_nb_iter::
 
     Gtype = GaussianWavePacket{1, Complex{T}, Complex{T}, T, T}
 
-    G0 = GaussianWavePacket(complex(1.0), complex(1.0), 6.0, -1.0)
+    G0 = GaussianWavePacket(complex(1.0), complex(1.0), 5.0, -1.0)
     G0 = G0 / norm_L2(G0)
 
-    Gv = Gaussian(1.0, 1.0)
+    Gv = Gaussian(1.0, 1.0, -2.0) + Gaussian(1.0, 1.0, 2.0)
     v(x) = Gv(x)
 
     G_list, res_list = schrodinger_gaussian_greedy(Gtype, T, a, b, Lt, G0, apply_op_1D, nb_terms;greedy_orthogonal=false, maxiter=newton_nb_iter, verbose=true, fullverbose=false)

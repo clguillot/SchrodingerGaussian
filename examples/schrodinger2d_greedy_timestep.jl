@@ -13,7 +13,7 @@ include("apply_op.jl")
 function test_schrodinger_greedy_timestep(a::T, b::T, Lt::Int, nb_steps::Int, nb_terms::Int, newton_nb_iter::Int, ::Type{T}, plot_result) where{T<:AbstractFloat}
 
     D = 2
-    Gtype = GaussianWavePacket{2, Complex{T}, Complex{T}, T, T}
+    Gtype = GaussianWavePacket{D, Complex{T}, Complex{T}, T, T}
 
     λ0 = complex(1.0)
     z0 = SVector{D}(fill(complex(0.5), D))
