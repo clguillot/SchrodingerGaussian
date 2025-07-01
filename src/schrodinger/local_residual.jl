@@ -182,11 +182,20 @@ function schrodinger_gaussian_residual_local_metric!(::Type{Gtype}, Htr::Abstrac
 
     function f(::Type{Gtype}, Y1, Y2) where Gtype
         G1 = unpack_gaussian_parameters(Gtype, Y1)
-        HG1 = apply_op(t1, G1)
         G2 = unpack_gaussian_parameters(Gtype, Y2)
-        HG2 = apply_op(t2, G2)
-        return real(schrodinger_gaussian_cross_residual(h, Lt, k, l, G1, G2, HG1, HG2))
+        S = fe_k_factor(h, k, l) * real(dot_L2(G1, G2))
+        if k == 1 || k == Lt
+            S /= 2
+        end
+        return S
     end
+    # function f(::Type{Gtype}, Y1, Y2) where Gtype
+    #     G1 = unpack_gaussian_parameters(Gtype, Y1)
+    #     HG1 = apply_op(t1, G1)
+    #     G2 = unpack_gaussian_parameters(Gtype, Y2)
+    #     HG2 = apply_op(t2, G2)
+    #     return real(schrodinger_gaussian_cross_residual(h, Lt, k, l, G1, G2, HG1, HG2))
+    # end
     ∇₁f!(∇, Y1, Y2) = ForwardDiff.gradient!(∇, Z -> f(Gtype, Z, Y2), Y1, cfg.gradient_cfg, Val(false))
     ForwardDiff.jacobian!(Htr, (∇, Z) -> ∇₁f!(∇, cfg.U1, Z), cfg.W, 
         cfg.U2, cfg.jacobian_cfg, Val(false))
