@@ -11,14 +11,16 @@
     - g(t) = ∑ₖ,ᵣ Gg[r, k] ζₖ'(t)
     Return G::Vector{<:GaussianWavePacket1D}
 =#
-function schrodinger_gaussian_greedy(::Type{Gtype}, ::Type{T}, a::T, b::T, Lt::Int,
-                Ginit::AbstractWavePacket, apply_op, nb_terms::Int;
-                maxiter::Int = 1000, verbose::Bool=false, fullverbose::Bool=false, greedy_orthogonal::Bool=true) where{Gtype<:AbstractWavePacket, T<:AbstractFloat}
+function schrodinger_gaussian_greedy(a::T, b::T, Lt::Int,
+                Ginit::AbstractWavePacket{D}, apply_op, nb_terms::Int;
+                maxiter::Int = 1000, verbose::Bool=true, fullverbose::Bool=false, greedy_orthogonal::Bool=true) where{D, T<:AbstractFloat}
     
     verbose = verbose || fullverbose
-    psize = param_size(Gtype)
 
+    Gtype = GaussianWavePacket{D,Complex{T},Complex{T},T,T}
     G0_ = zeros(Gtype, nb_terms)
+
+    psize = param_size(Gtype)
 
     Gf_ = fill(apply_op(a, zero(Gtype)), nb_terms, Lt)
     Gf = zeros(Gtype, 0, Lt)
@@ -106,6 +108,18 @@ function schrodinger_gaussian_greedy(::Type{Gtype}, ::Type{T}, a::T, b::T, Lt::I
     end
 
     return G, res_list
+end
+
+function schrodinger_gaussian_greedy(dis::Discretization, pot::Potential) 
+    function apply_op(t,G)
+        G1 = inv_fourier(unitary_product(fourier(G), SVector(2*t)))
+        Gout = Gaussian(0.0,1.0,0.0)
+        for Vg in pot.V
+            Gout = Gout + inv_fourier(unitary_product(fourier(Vg * G1), SVector(-2*t)))
+        end
+        return Gout
+    end
+    schrodinger_gaussian_greedy(dis.t0,dis.tf,dis.Nt,dis.G0,apply_op,dis.nb_g;greedy_orthogonal=dis.greedy_orthogonal, maxiter=dis.nb_newton)
 end
 
 #=
