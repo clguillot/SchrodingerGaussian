@@ -84,7 +84,7 @@ end
 =#
 function schrodinger_best_gaussian(a::T, b::T, Lt::Int,
                                         Ginit::AbstractWavePacket{D}, apply_op,
-                                        Gf::AbstractMatrix{<:AbstractWavePacket}, Gg::AbstractMatrix{<:AbstractWavePacket},
+                                        Gf::AbstractMatrix{<:AbstractWavePacket{D}}, Gg::AbstractMatrix{<:AbstractWavePacket{D}},
                                         abs_tol::T,
                                         cfg=SchBestGaussianCFG(Gtype, T, Lt);
                                         maxiter::Int = 1000, verbose::Bool=false) where{D, T<:AbstractFloat}

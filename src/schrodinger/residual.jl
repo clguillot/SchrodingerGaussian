@@ -12,7 +12,7 @@
         - H(t)g = apply_op(t, g) for any gaussian wave packet g
 =#
 function schrodinger_gaussian_residual(::Type{Gtype}, a::T, b::T, Lt::Int, Ginit::AbstractWavePacket{D},
-                apply_op, Gf::AbstractMatrix{<:AbstractWavePacket}, Gg::AbstractMatrix{<:AbstractWavePacket},
+                apply_op, Gf::AbstractMatrix{<:AbstractWavePacket{D}}, Gg::AbstractMatrix{<:AbstractWavePacket{D}},
                 X::AbstractVector{T1}) where{D, Gtype<:AbstractWavePacket, T<:Real, T1<:Real}
     psize = param_size(Gtype)
     if length(X) != psize * Lt
@@ -92,8 +92,8 @@ end
 =#
 function schrodinger_gaussian_residual_linear_part(::Type{Gtype}, a::T, b::T, Lt::Int,
                 Ginit::AbstractWavePacket{D}, apply_op,
-                Gf::AbstractMatrix{<:AbstractWavePacket}, Gg::AbstractMatrix{<:AbstractWavePacket},
-                X::AbstractVector{T1}) where{D, Gtype<:AbstractWavePacket, T<:Real, T1<:Real}
+                Gf::AbstractMatrix{<:AbstractWavePacket{D}}, Gg::AbstractMatrix{<:AbstractWavePacket{D}},
+                X::AbstractVector{T1}) where{D, Gtype<:AbstractWavePacket{D}, T<:Real, T1<:Real}
     psize = param_size(Gtype)
     if length(X) != psize * Lt
         throw(DimensionMismatch("X must be a Vector of size $(psize * Lt) but has size $(length(X))"))
@@ -144,8 +144,8 @@ end
     
 =#
 function schrodinger_gaussian_gradient!(::Type{Gtype}, ∇::AbstractVector{T},
-                a::T, b::T, Lt::Int, Ginit::AbstractWavePacket, apply_op,
-                Gf::AbstractMatrix{<:AbstractWavePacket}, Gg::AbstractMatrix{<:AbstractWavePacket}, X::AbstractVector{T},
+                a::T, b::T, Lt::Int, Ginit::AbstractWavePacket{D}, apply_op,
+                Gf::AbstractMatrix{<:AbstractWavePacket{D}}, Gg::AbstractMatrix{<:AbstractWavePacket{D}}, X::AbstractVector{T},
                 cfg=SchGaussianGradientCFG(Gtype, Lt, X)) where{D, Gtype<:AbstractWavePacket{D}, T<:Real}
     psize = param_size(Gtype)
     if length(X) != psize * Lt
@@ -236,10 +236,10 @@ end
     Returns ∇, A
 =#
 function schrodinger_gaussian_gradient_and_metric!(::Type{Gtype}, ∇::AbstractVector{T}, A::BlockBandedMatrix{T},
-                                        a::T, b::T, Lt::Int, Ginit::AbstractWavePacket, apply_op,
-                                        Gf::AbstractMatrix{<:AbstractWavePacket}, Gg::AbstractMatrix{<:AbstractWavePacket},
+                                        a::T, b::T, Lt::Int, Ginit::AbstractWavePacket{D}, apply_op,
+                                        Gf::AbstractMatrix{<:AbstractWavePacket{D}}, Gg::AbstractMatrix{<:AbstractWavePacket{D}},
                                         X::AbstractVector{T},
-                                        cfg=SchGaussianGradientAndMetricCFG(Gtype, Lt, X)) where{Gtype<:AbstractWavePacket, T<:Real}
+                                        cfg=SchGaussianGradientAndMetricCFG(Gtype, Lt, X)) where{D, Gtype<:AbstractWavePacket{D}, T<:Real}
     psize = param_size(Gtype)
     if length(X) != psize * Lt
         throw(DimensionMismatch("X must be a Vector of size $(psize * Lt) but has size $(length(X))"))

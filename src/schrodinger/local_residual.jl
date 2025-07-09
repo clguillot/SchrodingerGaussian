@@ -6,7 +6,7 @@
         - t = (Lt-1)*h
 =#
 function schrodinger_gaussian_cross_residual(h::Real, Lt::Int, k::Int, l::Int,
-                G0::AbstractWavePacket, G1::AbstractWavePacket, HG0::AbstractWavePacket, HG1::AbstractWavePacket)
+                G0::AbstractWavePacket{D}, G1::AbstractWavePacket{D}, HG0::AbstractWavePacket{D}, HG1::AbstractWavePacket{D}) where D
     TS = promote_type(core_type(G0), core_type(G1), core_type(HG0), core_type(HG1))
     S = zero(complex(TS))
 
@@ -48,7 +48,7 @@ end
         - t = (Lt-1)*h
 =#
 function schrodinger_gaussian_square_residual(h::Real, Lt::Int, k::Int,
-                G0::AbstractWavePacket, HG0::AbstractWavePacket)
+                G0::AbstractWavePacket{D}, HG0::AbstractWavePacket{D}) where D
     
     # |i∂ₜ|^2
     S = fe_k_factor(h, 0, 0) * norm2_L2(G0)
@@ -89,7 +89,7 @@ function SchGaussianLocalGradientCFG(::Type{Gtype}, Lt::Int, X::AbstractVector{T
     return SchGaussianLocalGradientCFG(X0, cfg_gradient)
 end
 function schrodinger_gaussian_residual_local_gradient!(::Type{Gtype}, ∇::AbstractVector{T}, a::T, b::T, Lt::Int, k::Int,
-                                        apply_op, Gf::AbstractMatrix{<:AbstractWavePacket}, Gg::AbstractMatrix{<:AbstractWavePacket}, X::AbstractVector{T},
+                                        apply_op, Gf::AbstractMatrix{<:AbstractWavePacket{D}}, Gg::AbstractMatrix{<:AbstractWavePacket{D}}, X::AbstractVector{T},
                                         cfg=SchGaussianLocalGradientCFG(Gtype, Lt, X)) where{D, Gtype<:AbstractWavePacket{D}, T<:Real}
     psize = param_size(Gtype)
     if !(1 <= k <= Lt)
