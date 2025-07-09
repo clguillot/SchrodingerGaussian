@@ -126,11 +126,12 @@ function schrodinger_greedy_gaussian_timestep(pb::GreedyDiscretization{T}, nb_ti
     nb_iter = pb.nb_iter
     greedy_orthogonal = pb.greedy_orthogonal
     verbose = verbose || fullverbose
+    nb_timesteps = min(nb_timesteps, Lt-1)
 
     Gtype = GaussianWavePacket{D,Complex{T},Complex{T},T,T}
     res = zero(T)
     G = zeros(Gtype, nb_terms, Lt)
-    lt = fld(Lt, nb_timesteps)
+    lt = fld(Lt-1, nb_timesteps)
     h = (b-a) / (Lt-1)
     for p in (progressbar ? ProgressBar(1:nb_timesteps) : 1:nb_timesteps)
         k1 = (p-1)*lt + 1
