@@ -1,10 +1,17 @@
 
 
-function schrodinger_gaussian_polynomial_greedy(::Type{N}, a::T, b::T, Lt::Int,
-                Ginit::AbstractWavePacket{D}, apply_op, nb_terms::Int;
-                maxiter::Int = 1000, verbose::Bool=false, fullverbose::Bool=false) where{D, N, T<:AbstractFloat}
+function schrodinger_greedy_hermite(pb::GreedyDiscretization{T}, ::Type{N},
+                Ginit::AbstractWavePacket{D}, apply_op;
+                verbose::Bool=false, fullverbose::Bool=false) where{D, N, T<:AbstractFloat}
     
+    a = pb.t0
+    b = pb.tf
+    Lt = pb.Lt
+    nb_terms = pb.nb_terms
+    nb_iter = pb.nb_iter
+    greedy_orthogonal = pb.greedy_orthogonal
     verbose = verbose || fullverbose
+
     Gtype = GaussianWavePacket{D, Complex{T}, Complex{T}, T, T}
     L = prod(N.parameters)
     Htype = HermiteWavePacket{D, N, Complex{T}, Complex{T}, T, T, L}
@@ -41,9 +48,9 @@ function schrodinger_gaussian_polynomial_greedy(::Type{N}, a::T, b::T, Lt::Int,
 
         for iter=1:nb_terms
             verbose && println("Computing term $iter...")
-            G, _ = @views schrodinger_best_gaussian(Gtype, T, a, b, Lt, Ginit + WavePacketSum(G0_[1 : iter-1]), apply_op,
+            G, _ = @views schrodinger_best_gaussian(a, b, Lt, Ginit + WavePacketSum{D}(G0_[1 : iter-1]), apply_op,
                     Gf_[1:iter-1, :], Gg_[1:iter-1, :], abs_tol, cfg;
-                    maxiter=maxiter, verbose=fullverbose)
+                    maxiter=nb_iter, verbose=fullverbose)
             
             # Fills the Gram matrix A
             fill!(A, zero(T))
@@ -58,10 +65,10 @@ function schrodinger_gaussian_polynomial_greedy(::Type{N}, a::T, b::T, Lt::Int,
                     # Right member
                     Y[i, k] = zero(eltype(Y))
                     for l in max(1,k-1):min(Lt,k+1)
-                        Y[i, k] += (b - a) * schrodinger_gaussian_cross_residual(h, Lt, k, l, Hi, WavePacketSum(@view Gg_[1:iter-1, l]), HHi, WavePacketSum(@view Gf_[1:iter-1, l]))
+                        Y[i, k] += (b - a) * schrodinger_gaussian_cross_residual(h, Lt, k, l, Hi, WavePacketSum{D}(@view Gg_[1:iter-1, l]), HHi, WavePacketSum{D}(@view Gf_[1:iter-1, l]))
                     end
                     if k == 1
-                        Y[i, k] += dot_L2(Hi, Ginit + WavePacketSum(@view G0_[1:iter-1]))
+                        Y[i, k] += dot_L2(Hi, Ginit + WavePacketSum{D}(@view G0_[1:iter-1]))
                     end
 
                     # Mass matrix
@@ -118,16 +125,22 @@ end
 #=
 
 =#
-function schrodinger_gaussian_greedy_polynomial_timestep(::Type{N}, a::T, b::T, Lt::Int, nb_timesteps::Int,
-                Ginit::AbstractWavePacket{D}, apply_op, nb_greedy_terms::Int;
-                progressbar::Bool=false, maxiter::Int = 1000, verbose::Bool=false, fullverbose::Bool=false) where{T<:AbstractFloat,D,N}
+function schrodinger_greedy_hermite_timestep(pb::GreedyDiscretization{T}, ::Type{N}, nb_timesteps::Int,
+                Ginit::AbstractWavePacket{D}, apply_op;
+                progressbar::Bool=false, verbose::Bool=false, fullverbose::Bool=false) where{T<:AbstractFloat, D, N}
+    a = pb.t0
+    b = pb.tf
+    Lt = pb.Lt
+    nb_terms = pb.nb_terms
+    nb_iter = pb.nb_iter
+    greedy_orthogonal = pb.greedy_orthogonal
 
     Gtype = GaussianWavePacket{D,Complex{T},Complex{T},T,T}
     L = prod(N.parameters)
     Htype = HermiteWavePacket{D, N, Complex{T}, Complex{T}, T, T, L}
 
     res = zero(T)
-    G = zeros(Htype, nb_greedy_terms, Lt)
+    G = zeros(Htype, nb_terms, Lt)
     lt = fld(Lt, nb_timesteps)
     h = (b-a) / (Lt-1)
     for p in (progressbar ? ProgressBar(1:nb_timesteps) : 1:nb_timesteps)
@@ -136,8 +149,9 @@ function schrodinger_gaussian_greedy_polynomial_timestep(::Type{N}, a::T, b::T, 
         a_ = a + (k1-1)*h
         b_ = a + (k2-1)*h
         lt_ = k2 - k1 + 1
-        G0_ = (p == 1) ? Ginit : WavePacketSum(@view G[:, k1])
-        G_block, res_list = schrodinger_gaussian_polynomial_greedy(N, a_, b_, lt_, G0_, apply_op, nb_greedy_terms; maxiter, verbose, fullverbose)
+        G0_ = (p == 1) ? Ginit : WavePacketSum{D}(@view G[:, k1])
+        pb_loc = GreedyDiscretization(a_, b_, lt_, nb_terms, nb_iter, greedy_orthogonal)
+        G_block, res_list = schrodinger_greedy_hermite(pb_loc, N, G0_, apply_op; verbose, fullverbose)
         @views G[:, k1:k2] .= G_block
         res += sqrt(res_list[end])
     end

@@ -90,7 +90,7 @@ function SchGaussianLocalGradientCFG(::Type{Gtype}, Lt::Int, X::AbstractVector{T
 end
 function schrodinger_gaussian_residual_local_gradient!(::Type{Gtype}, ∇::AbstractVector{T}, a::T, b::T, Lt::Int, k::Int,
                                         apply_op, Gf::AbstractMatrix{<:AbstractWavePacket}, Gg::AbstractMatrix{<:AbstractWavePacket}, X::AbstractVector{T},
-                                        cfg=SchGaussianLocalGradientCFG(Gtype, Lt, X)) where{Gtype<:AbstractWavePacket, T<:Real}
+                                        cfg=SchGaussianLocalGradientCFG(Gtype, Lt, X)) where{D, Gtype<:AbstractWavePacket{D}, T<:Real}
     psize = param_size(Gtype)
     if !(1 <= k <= Lt)
         throw(BoundsError("k is equal to $k but must be between 1 and Lt-1=$(Lt-1)"))
@@ -121,7 +121,7 @@ function schrodinger_gaussian_residual_local_gradient!(::Type{Gtype}, ∇::Abstr
         S += 2 * real(schrodinger_gaussian_cross_residual(h, Lt, k, k+1, G, Gp1, HG, HGp1))
     
         # Linear part
-        S -= 2 * @views sum(real(schrodinger_gaussian_cross_residual(h, Lt, k, l, G, WavePacketSum(Gg[:, l]), HG, WavePacketSum(Gf[:, l]))) for l in max(1,k-1):min(Lt,k+1))
+        S -= 2 * @views sum(real(schrodinger_gaussian_cross_residual(h, Lt, k, l, G, WavePacketSum{D}(Gg[:, l]), HG, WavePacketSum{D}(Gf[:, l]))) for l in max(1,k-1):min(Lt,k+1))
     
         return S
     end

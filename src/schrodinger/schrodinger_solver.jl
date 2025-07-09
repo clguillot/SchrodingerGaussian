@@ -82,12 +82,13 @@ end
     - g(t) = ∑ₖ,ᵣ Gg[r, k] ζₖ'(t)
     Return G::Vector{<:GaussianWavePacket1D}
 =#
-function schrodinger_best_gaussian(::Type{Gtype}, ::Type{T}, a::T, b::T, Lt::Int,
-                                        Ginit::AbstractWavePacket, apply_op,
+function schrodinger_best_gaussian(a::T, b::T, Lt::Int,
+                                        Ginit::AbstractWavePacket{D}, apply_op,
                                         Gf::AbstractMatrix{<:AbstractWavePacket}, Gg::AbstractMatrix{<:AbstractWavePacket},
                                         abs_tol::T,
                                         cfg=SchBestGaussianCFG(Gtype, T, Lt);
-                                        maxiter::Int = 1000, verbose::Bool=false) where{Gtype<:AbstractWavePacket, T<:AbstractFloat}
+                                        maxiter::Int = 1000, verbose::Bool=false) where{D, T<:AbstractFloat}
+    Gtype = GaussianWavePacket{D, Complex{T}, Complex{T}, T, T}
     psize = param_size(Gtype)
 
     h = (b-a)/(Lt-1)
@@ -112,7 +113,7 @@ function schrodinger_best_gaussian(::Type{Gtype}, ::Type{T}, a::T, b::T, Lt::Int
 
         # Linear vector
         for l in max(1,k-1):min(Lt,k+1)
-            F[k] += @views schrodinger_gaussian_cross_residual(h, Lt, k, l, G, WavePacketSum(Gg[:, l]), HG, WavePacketSum(Gf[:, l]))
+            F[k] += @views schrodinger_gaussian_cross_residual(h, Lt, k, l, G, WavePacketSum{D}(Gg[:, l]), HG, WavePacketSum{D}(Gf[:, l]))
         end
 
         # Gram matrix

@@ -18,20 +18,6 @@ using HermiteWavePackets
 using ProgressBars
 
 #=
-    Discretization parameters
-=#
-
-export Discretization
-include("Discretization.jl")
-
-#=
-    Potential parameters
-=#
-
-export Potential
-include("Potential.jl")
-
-#=
     Basics
 =#
 include("utils.jl")
@@ -45,15 +31,20 @@ export gaussian_approx
 include("approx/approx_solver.jl")
 
 #=
+    Greedy problem
+=#
+export GreedyDiscretization
+include("greedy_discretization.jl")
+
+#=
     Solver for Schrodinger equation
 =#
-export schrodinger_best_gaussian
-export schrodinger_gaussian_greedy
-export schrodinger_gaussian1d_polynomial_greedy
-export schrodinger_gaussian_greedy_timestep
+export schrodinger_greedy_gaussian
+export schrodinger_greedy_gaussian_timestep
+export schrodinger_greedy_hermite
+export schrodinger_greedy_hermite_timestep
 include("schrodinger/schrodinger_solver.jl")
-include("schrodinger/schrodinger_greedy.jl")
-include("schrodinger/schrodinger_greedy_polynomial.jl")
-
+include("schrodinger/schrodinger_greedy_gaussian.jl")
+include("schrodinger/schrodinger_greedy_hermite.jl")
 
 end

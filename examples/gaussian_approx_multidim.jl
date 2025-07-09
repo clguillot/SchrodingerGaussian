@@ -23,18 +23,10 @@ function test_gaussian_multidim_approx()
     G1 = GaussianWavePacket(λ1, z1, q1, p1)
     G2 = GaussianWavePacket(λ2, z2, q2, p2)
     G3 = GaussianWavePacket(λ3, z3, q3, p3)
-    
-    # Perturbation
-    δ = 1e-1
-    λ_init = λ1 + δ * complex(rand(), rand())
-    z_init = z1 + δ * ((@SVector rand(3)) + im * (@SVector rand(3)))
-    q_init = q1 + δ * @SVector rand(3)
-    p_init = p1 + δ * @SVector rand(3)
-    G_init = GaussianWavePacket(λ_init, z_init, q_init, p_init)
 
     Gtype = GaussianWavePacket{3, ComplexF64, ComplexF64, Float64, Float64}
 
-    G_approx = gaussian_approx(Gtype, Float64, [G1, G2, G3], G_init; rel_tol=1e-12, verbose=true)
+    G_approx = gaussian_approx(Gtype, Float64, WavePacketSum((G1, G2, G3)); rel_tol=1e-12, verbose=true)
 
     # display(G)
     display(G_approx)
