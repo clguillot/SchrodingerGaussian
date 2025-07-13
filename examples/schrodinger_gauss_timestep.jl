@@ -74,6 +74,6 @@ end
 
 G0 = GaussianWavePacket(complex(1.0),complex(1.0),6.,-1.0)
 G0 = G0 / norm_L2(G0)
-pb = GreedyDiscretization(0., 5., 100, 10, 100, false)
+pb = GreedyDiscretization(0., 5., 101, 10, 100, false)
 V = Gaussian(1.5, 1.0, -2.0) + Gaussian(1.0, 1.0, 2.0)
 plot_schrodinger_gaussian_timestep(pb, 10, G0, V)
