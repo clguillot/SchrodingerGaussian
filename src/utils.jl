@@ -85,6 +85,9 @@ function pack_gaussian_parameters!(X::AbstractVector{T}, G::GaussianWavePacket{D
 
     return X
 end
+# function pack_gaussian_parameters(X::GaussianWavePacket{D, Complex{T}, Complex{T}, T, T}) where{D, T}
+#     return SVector(reim(G.λ)..., (reim(w)... for w in G.z)..., G.q..., G.p...)
+# end
 
 #=
     Unpacking a GaussianWavePacket from an AbstractVector

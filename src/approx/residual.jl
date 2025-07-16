@@ -1,44 +1,28 @@
 
 #=
-    Computes |G_X - ∑G_list[k]|^2 - |∑G_list[k]|^2
+    Computes |G_X - Ginit[k]|^2 - |Ginit[k]|^2
 =#
-function gaussian_approx_residual(G::AbstractWavePacket, G_list::AbstractWavePacket)
-    return norm2_L2(G) - 2 * real(dot_L2(G, G_list))
+function gaussian_approx_residual(G::AbstractWavePacket, Ginit::AbstractWavePacket)
+    return norm2_L2(G) - 2 * real(dot_L2(G, Ginit))
 end
 
 #=
-    Returns |∑G_list[k]|^2
+    Returns |Ginit[k]|^2
 =#
-function gaussian_approx_residual_constant_part(G_list::AbstractWavePacket)
-    return norm2_L2(G_list::AbstractWavePacket)
+function gaussian_approx_residual_constant_part(Ginit::AbstractWavePacket)
+    return norm2_L2(Ginit::AbstractWavePacket)
 end
 
-#Gradient Config
-mutable struct GaussianApproxGradientCFG{GC}
-    cfg_gradient::GC
-end
-function GaussianApproxGradientCFG(::Type{Gtype}, X::Vector{T}) where{Gtype<:AbstractWavePacket, T<:Real}
-    psize = param_size(Gtype)
-    if length(X) != psize
-        throw(DimensionMismatch("X must be a vector of size $psize but has size $(length(X))"))
-    end
-
-    cfg_gradient = ForwardDiff.GradientConfig(x -> nothing, X, ForwardDiff.Chunk(2))
-    return GaussianApproxGradientCFG(cfg_gradient)
-end
 #Gradient
-function gaussian_approx_gradient!(::Type{Gtype}, ∇::Vector{T}, G_list::AbstractWavePacket,
-                                    X::Vector{T},
-                                    cfg=GaussianApproxGradientCFG(Gtype, X)) where{Gtype<:AbstractWavePacket, T<:Real}
+function gaussian_approx_gradient(::Type{Gtype}, Ginit::AbstractWavePacket{D},
+                                    X::AbstractVector{T}) where{D, Gtype<:AbstractWavePacket{D}, T<:Real}
     psize = param_size(Gtype)
-    if length(X) != psize
-        throw(DimensionMismatch("X must be a vector of size $psize but has size $(length(X))"))
-    end
+    X = SVector{psize}(X)
 
     function f(Y)
         G = unpack_gaussian_parameters(Gtype, Y)
-        gaussian_approx_residual(G, G_list)
+        gaussian_approx_residual(G, Ginit)
     end
-    ForwardDiff.gradient!(∇, f, X, cfg.cfg_gradient, Val(false))
-    return ∇
+    
+    return ForwardDiff.gradient(f, X)
 end

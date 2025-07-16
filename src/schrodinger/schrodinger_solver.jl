@@ -10,8 +10,7 @@ end
 function schrodinger_gaussian_linesearch(::Type{Gtype}, U::Vector{T}, ∇::Vector{T}, X::Vector{T}, d::Vector{T},
                                         a::T, b::T, Lt::Int,
                                         G0::AbstractWavePacket, apply_op,
-                                        Gf::AbstractMatrix{<:AbstractWavePacket}, Gg::AbstractMatrix{<:AbstractWavePacket},
-                                        cfg=SchGaussianGradientCFG(Gtype, Lt, U)) where{Gtype<:AbstractWavePacket, T<:Real}
+                                        Gf::AbstractMatrix{<:AbstractWavePacket}, Gg::AbstractMatrix{<:AbstractWavePacket}) where{Gtype<:AbstractWavePacket, T<:Real}
     psize = param_size(Gtype)
     function ϕ(α)
         @. U = X + α * d
@@ -19,12 +18,12 @@ function schrodinger_gaussian_linesearch(::Type{Gtype}, U::Vector{T}, ∇::Vecto
     end
     function dϕ(α)
         @. U = X + α * d
-        schrodinger_gaussian_gradient!(Gtype, ∇, a, b, Lt, G0, apply_op, Gf, Gg, U, cfg)
+        schrodinger_gaussian_gradient!(Gtype, ∇, a, b, Lt, G0, apply_op, Gf, Gg, U)
         return dot(d, ∇)
     end
     function ϕdϕ(α)
         @. U = X + α * d
-        val, _ = schrodinger_gaussian_gradient!(Gtype, ∇, a, b, Lt, G0, apply_op, Gf, Gg, U, cfg)
+        val, _ = schrodinger_gaussian_gradient!(Gtype, ∇, a, b, Lt, G0, apply_op, Gf, Gg, U)
         return (val, dot(d, ∇))
     end
 
@@ -40,19 +39,17 @@ function schrodinger_gaussian_linesearch(::Type{Gtype}, U::Vector{T}, ∇::Vecto
     ls = HagerZhang{T}(;alphamax=alphamax)
 
     (ϕ_0, dϕ_0) = ϕdϕ(zero(T))
-    α_opt, ϕ_0 = ls(ϕ, dϕ, ϕdϕ, min(one(T), alphamax), ϕ_0, dϕ_0)
+    α_opt, ϕ_0 = ls(ϕ, dϕ, ϕdϕ, min(T(0.5), alphamax), ϕ_0, dϕ_0)
 
     return α_opt, ϕ_0
 end
 
-mutable struct SchBestGaussianCFG{T, CG, CM, Cchol}
+mutable struct SchBestGaussianCFG{T, Cchol}
     X::Vector{T}
     U::Vector{T}
     ∇::Vector{T}
     d::Vector{T}
     A::BlockBandedMatrix{T}
-    cfg_gradient::CG
-    cfg_metric::CM
     cfg_cholesky::Cchol
 end
 function SchBestGaussianCFG(::Type{Gtype}, ::Type{T}, Lt::Int) where{Gtype<:AbstractWavePacket, T<:Real}
@@ -63,10 +60,8 @@ function SchBestGaussianCFG(::Type{Gtype}, ::Type{T}, Lt::Int) where{Gtype<:Abst
     d = similar(X)  #Descent direction
     A = BlockBandedMatrix(Diagonal(zeros(T, Lt * psize)), #Buffer for the metric
         fill(psize, Lt), fill(psize, Lt), (1,1))
-    cfg_gradient = SchGaussianGradientCFG(Gtype, Lt, U)
-    cfg_metric = SchGaussianGradientAndMetricCFG(Gtype, Lt, X)
     cfg_cholesky = BlockCholeskyStaticConfig(∇, Val(psize))
-    return SchBestGaussianCFG(X, U, ∇, d, A, cfg_gradient, cfg_metric, cfg_cholesky)
+    return SchBestGaussianCFG(X, U, ∇, d, A, cfg_cholesky)
 end
 
 #=
@@ -141,8 +136,6 @@ function schrodinger_best_gaussian(a::T, b::T, Lt::Int,
     ∇ = cfg.∇
     d = cfg.d
     A = cfg.A
-    cfg_gradient = cfg.cfg_gradient
-    cfg_metric = cfg.cfg_metric
     cfg_cholesky = cfg.cfg_cholesky
 
     # Global space-time iterations
@@ -153,11 +146,11 @@ function schrodinger_best_gaussian(a::T, b::T, Lt::Int,
         verbose && println("Iteration $iter on $maxiter :")
 
         #Natural Gradient descent step
-        schrodinger_gaussian_gradient_and_metric!(Gtype, ∇, A, a, b, Lt, Ginit, apply_op, Gf, Gg, X, cfg_metric)
+        schrodinger_gaussian_gradient_and_metric!(Gtype, ∇, A, a, b, Lt, Ginit, apply_op, Gf, Gg, X)
         build_newton_direction!(Gtype, d, A, ∇, cfg_cholesky)
         res = sqrt(max(dot(d, ∇), zero(T)) / 2)
         @. d = T(-0.5) * d
-        α, E = schrodinger_gaussian_linesearch(Gtype, U, ∇, X, d, a, b, Lt, Ginit, apply_op, Gf, Gg, cfg_gradient)
+        α, E = schrodinger_gaussian_linesearch(Gtype, U, ∇, X, d, a, b, Lt, Ginit, apply_op, Gf, Gg)
         @. X += α * d
         verbose && println("res = $res")
 

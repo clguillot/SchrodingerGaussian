@@ -1,65 +1,40 @@
 include("metric.jl")
 include("residual.jl")
 
-mutable struct GaussianApproxGradientAndMetricCFG{CG, CM}
-    cfg_gradient::CG
-    cfg_metric::CM
-end
-function GaussianApproxGradientAndMetricCFG(::Type{Gtype}, X::Vector{T}) where{Gtype<:AbstractWavePacket, T<:Real}
-    cfg_gradient = GaussianApproxGradientCFG(Gtype, X)
-    cfg_metric = GaussianApproxMetricTRHessCFG(Gtype, X, X)
-    return GaussianApproxGradientAndMetricCFG(cfg_gradient, cfg_metric)
-end
+function gaussian_approx_gradient_and_metric(::Type{Gtype}, Ginit::AbstractWavePacket{D},
+                                        X::AbstractVector{T}) where{D, Gtype<:AbstractWavePacket{D}, T<:Real}
+    psize = param_size(Gtype)    
+    X = SVector{psize}(X)
 
-
-function gaussian_approx_gradient_and_metric!(::Type{Gtype}, ∇::Vector{T}, A::Matrix{T},
-                                        Ginit::AbstractWavePacket,
-                                        X::Vector{T},
-                                        cfg=GaussianApproxGradientAndMetricCFG(Gtype, X)) where{Gtype<:AbstractWavePacket, T<:Real}
-    psize = param_size(Gtype)
-    if size(A) != (psize, psize)
-        throw(DimensionMismatch("A must be a square matrix of size $(psize)x$(psize) but has size $(size(Htr))"))
-    end
-    if length(X) != psize
-        throw(DimensionMismatch("X must be a vector of size $psize but has size $(length(X))"))
-    end
-    if length(∇) != psize
-        throw(DimensionMismatch("∇ must be a vector of size $psize but has size $(length(∇))"))
-    end
-    
     #Gradient
-    gaussian_approx_gradient!(Gtype, ∇, Ginit, X, cfg.cfg_gradient)
+    ∇ = gaussian_approx_gradient(Gtype, Ginit, X)
 
     #Hessian
-    gaussian_approx_metric_topright_hessian!(Gtype, A, X, X, cfg.cfg_metric)
+    A = gaussian_approx_metric_topright_hessian(Gtype, X, X)
 
     return ∇, A
 end
 
-mutable struct GaussianApproxCFG{T<:Real, CG, CFG}
-    U::Vector{T}
-    X::Vector{T}
-    ∇::Vector{T}
-    d::Vector{T}
-    A::Matrix{T}
-    cfg_gradient::CG
-    cfg::CFG
-end
-function GaussianApproxCFG(::Type{Gtype}, ::Type{T}) where{Gtype<:AbstractWavePacket, T<:Real}
-    psize = param_size(Gtype)
-    U = zeros(T, psize)
-    X = zeros(T, psize)
-    ∇ = zeros(T, psize)
-    d = zeros(T, psize)
-    A = zeros(T, psize, psize)
-    cfg_gradient = GaussianApproxGradientCFG(Gtype, U)
-    cfg = GaussianApproxGradientAndMetricCFG(Gtype, X)
-    return GaussianApproxCFG(U, X, ∇, d, A, cfg_gradient, cfg)
+function _gaussian_approx_linesearch(::Type{Gtype}, ::Type{T}, ls, Ginit, X, d) where{Gtype, T}
+    function ϕ(α)
+        return T(gaussian_approx_residual(unpack_gaussian_parameters(Gtype, X + α * d), Ginit))
+    end
+    function dϕ(α)
+        gaussian_approx_gradient(Gtype, Ginit, X + α * d)
+        return T(dot(d, gaussian_approx_gradient(Gtype, Ginit, X + α * d)))
+    end
+    function ϕdϕ(α)
+        return (ϕ(α), dϕ(α))
+    end
+
+    fx = ϕ(zero(T))
+    dϕ_0 = dϕ(zero(T))
+    α, _ = ls(ϕ, dϕ, ϕdϕ, min(T(0.5), ls.alphamax), fx, dϕ_0)
+    return T(α)
 end
 
-function gaussian_approx(::Type{Gtype}, ::Type{T}, Ginit::AbstractWavePacket,
-                            cfg=GaussianApproxCFG(Gtype, T);
-                            rel_tol::T=sqrt(eps(T)), maxiter::Int=1000, verbose::Bool=false) where{Gtype<:AbstractWavePacket, T<:Real}
+function gaussian_approx(::Type{Gtype}, ::Type{T}, Ginit::AbstractWavePacket{D};
+                            rel_tol::T=sqrt(eps(T)), maxiter::Int=1000, verbose::Bool=false) where{D, Gtype<:AbstractWavePacket{D}, T<:Real}
     psize = param_size(Gtype)
     abs_tol = rel_tol * norm_L2(Ginit)
 
@@ -68,37 +43,19 @@ function gaussian_approx(::Type{Gtype}, ::Type{T}, Ginit::AbstractWavePacket,
     G0 = convert(Gtype, truncate_to_gaussian(argmin(g -> norm2_L2(Ginit - g), Ginit)))
     # G0 = argmax(g -> abs(dot_L2(g, Ginit)), Ginit)
     λ = dot_L2(G0, Ginit) / norm2_L2(G0)
-    X = pack_gaussian_parameters!(cfg.X, λ * G0)
+    X = SVector{psize}(pack_gaussian_parameters!(zeros(T, psize), λ * G0))
 
-    U = cfg.U
-    d = cfg.d
     iter = 0
     while iter < maxiter
         iter += 1
 
         verbose && println("Iteration $iter :")
 
-        ∇, A = gaussian_approx_gradient_and_metric!(Gtype, cfg.∇, cfg.A, Ginit, X, cfg.cfg)
+        ∇, A = gaussian_approx_gradient_and_metric(Gtype, Ginit, X)
         chA = cholesky(Symmetric(SMatrix{psize, psize}(A)))
-        Sd = chA \ SVector{psize}(∇)
+        Sd = chA \ ∇
         res = dot(Sd, ∇)
-        @. d = -Sd
-
-        function ϕ(α)
-            @. U = X + α * d
-            return gaussian_approx_residual(unpack_gaussian_parameters(Gtype, U), Ginit)
-        end
-        function dϕ(α)
-            @. U = X + α * d
-            gaussian_approx_gradient!(Gtype, ∇, Ginit, U, cfg.cfg_gradient)
-            return dot(cfg.d, cfg.∇)
-        end
-        function ϕdϕ(α)
-            @. U = X + α * d
-            val = gaussian_approx_residual(unpack_gaussian_parameters(Gtype, U), Ginit)
-            gaussian_approx_gradient!(Gtype, ∇, Ginit, U, cfg.cfg_gradient)
-            return (val, dot(d, ∇))
-        end
+        d = -Sd
 
         # Creates a linesearch with an alphamax to avoid negative variance for the gaussians
         # More precisely, the real part of the variance cannot be more than halved
@@ -107,10 +64,8 @@ function gaussian_approx(::Type{Gtype}, ::Type{T}, Ginit::AbstractWavePacket,
         alphamax = minimum(@. ifelse(a_dir < 0, -a / (2*a_dir), typemax(T)))
         ls = HagerZhang{T}(;alphamax=alphamax)
 
-        fx = ϕ(zero(T))
-        dϕ_0 = dϕ(zero(T))
-        α, fx = ls(ϕ, dϕ, ϕdϕ, min(T(0.5), alphamax), fx, dϕ_0)
-        @. X += α * d
+        α = _gaussian_approx_linesearch(Gtype, T, ls, Ginit, X, d)
+        X = T.(X + α * d)
 
         if verbose
             println("α = $α")
@@ -130,6 +85,8 @@ function gaussian_approx(::Type{Gtype}, ::Type{T}, Ginit::AbstractWavePacket,
             println("Not converged after $iter iterations")
         end
     end
+
+    # InteractiveUtils.@code_warntype norm2_L2(Ginit)
 
     G = unpack_gaussian_parameters(Gtype, X)
     res = norm2_L2(G) + norm2_L2(Ginit) - 2 * real(dot_L2(G, Ginit))

@@ -26,8 +26,9 @@ function test_gaussian_multidim_approx()
 
     Gtype = GaussianWavePacket{3, ComplexF64, ComplexF64, Float64, Float64}
 
-    G_approx = gaussian_approx(Gtype, Float64, WavePacketSum((G1, G2, G3)); rel_tol=1e-12, verbose=true)
+    # @descend gaussian_approx(Gtype, Float64, WavePacketSum(G1, G2, G3); rel_tol=1e-12, verbose=true)
+    G_approx, res = gaussian_approx(Gtype, Float64, WavePacketSum(G1, G2, G3); rel_tol=1e-12, verbose=true)
 
-    # display(G)
+    println("Res = $res")
     display(G_approx)
 end

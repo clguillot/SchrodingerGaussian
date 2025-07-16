@@ -75,22 +75,9 @@ end
     where
     ...
 =#
-mutable struct SchGaussianLocalGradientCFG{T<:Real, CG}
-    X0::Vector{T}
-    cfg_gradient::CG
-end
-function SchGaussianLocalGradientCFG(::Type{Gtype}, Lt::Int, X::AbstractVector{T}) where{Gtype<:AbstractWavePacket, T<:Real}
-    psize = param_size(Gtype)
-    if length(X) != Lt*psize
-        throw(DimensionMismatch("X must be a Vector of size $(Lt*psize) but has size $(length(X))"))
-    end
-    X0 = zeros(T, psize)
-    cfg_gradient = ForwardDiff.GradientConfig(x -> nothing, X0, ForwardDiff.Chunk(2))
-    return SchGaussianLocalGradientCFG(X0, cfg_gradient)
-end
-function schrodinger_gaussian_residual_local_gradient!(::Type{Gtype}, ∇::AbstractVector{T}, a::T, b::T, Lt::Int, k::Int,
-                                        apply_op, Gf::AbstractMatrix{<:AbstractWavePacket{D}}, Gg::AbstractMatrix{<:AbstractWavePacket{D}}, X::AbstractVector{T},
-                                        cfg=SchGaussianLocalGradientCFG(Gtype, Lt, X)) where{D, Gtype<:AbstractWavePacket{D}, T<:Real}
+function schrodinger_gaussian_residual_local_gradient(::Type{Gtype}, a::T, b::T, Lt::Int, k::Int,
+                                        apply_op, Gf::AbstractMatrix{<:AbstractWavePacket{D}}, Gg::AbstractMatrix{<:AbstractWavePacket{D}},
+                                        X::AbstractVector{T}) where{D, Gtype<:AbstractWavePacket{D}, T<:Real}
     psize = param_size(Gtype)
     if !(1 <= k <= Lt)
         throw(BoundsError("k is equal to $k but must be between 1 and Lt-1=$(Lt-1)"))
@@ -99,19 +86,18 @@ function schrodinger_gaussian_residual_local_gradient!(::Type{Gtype}, ∇::Abstr
         throw(DimensionMismatch("X must be a Vector of size $(psize * Lt) but has size $(length(X))"))
     end
     
+    Xk = SVector{psize}(@view X[(k-1)*psize + 1 : k*psize])
     h = (b-a)/(Lt-1)
     t = a + (k-1)*h
 
-    X0 = cfg.X0
-    X0 .= @view X[(k-1)*psize + 1 : k*psize]
-    Gz = zero(Gtype)
 
+    Gz = zero(Gtype)
     Gm1 = (k > 1) ? unpack_gaussian_parameters(Gtype, X, (k-2)*psize + 1) : Gz
     Gp1 = (k < Lt) ? unpack_gaussian_parameters(Gtype, X, k*psize + 1) : Gz
     HGm1 = apply_op(t-h, Gm1)
     HGp1 = apply_op(t+h, Gp1)
 
-    function f(Y, ::Type{Gtype}, t, h, Lt, k, apply_op, Gm1, Gp1, HGm1, HGp1, Gf, Gg) where Gtype
+    function f(Y)
         G = unpack_gaussian_parameters(Gtype, Y)
         HG = apply_op(t, G)
     
@@ -121,52 +107,21 @@ function schrodinger_gaussian_residual_local_gradient!(::Type{Gtype}, ∇::Abstr
         S += 2 * real(schrodinger_gaussian_cross_residual(h, Lt, k, k+1, G, Gp1, HG, HGp1))
     
         # Linear part
-        S -= 2 * @views sum(real(schrodinger_gaussian_cross_residual(h, Lt, k, l, G, WavePacketSum{D}(Gg[:, l]), HG, WavePacketSum{D}(Gf[:, l]))) for l in max(1,k-1):min(Lt,k+1))
+        g(l) = real(schrodinger_gaussian_cross_residual(h, Lt, k, l, G, WavePacketSum{D}(@view Gg[:, l]), HG, WavePacketSum{D}(@view Gf[:, l])))
+        S -= 2 * sum(g, max(1,k-1):min(Lt,k+1))
     
         return S
     end
-    g(Y) = f(Y, Gtype, t, h, Lt, k, apply_op, Gm1, Gp1, HGm1, HGp1, Gf, Gg)
     
-    return ForwardDiff.gradient!(∇, g, X0, cfg.cfg_gradient, Val(false))
+    return ForwardDiff.gradient(f, Xk)
 end
 
 #=
-    
-=#
-# Metric config
-mutable struct SchGaussianLocalMetricCFG{T, GC, JC}
-    W::Vector{T}
-    U1::Vector{T}
-    U2::Vector{T}
-    gradient_cfg::GC
-    jacobian_cfg::JC
-end
-function SchGaussianLocalMetricCFG(::Type{Gtype}, Lt::Int, X1::AbstractVector{T}, X2::AbstractVector{T}) where{Gtype<:AbstractWavePacket, T<:Real}
-    psize = param_size(Gtype)
-    if length(X1) != Lt*psize
-        throw(DimensionMismatch("X1 must be a vector of size $(Lt*psize) but has size $(length(X1))"))
-    end
-    if length(X2) != Lt*psize
-        throw(DimensionMismatch("X2 must be a vector of size $(Lt*psize) but has size $(length(X2))"))
-    end
-    
-    W = zeros(T, psize)
-    U1 = zeros(T, psize)
-    U2 = zeros(T, psize)
-    jacobian_cfg = ForwardDiff.JacobianConfig(x -> nothing, W, U1, ForwardDiff.Chunk(2))
-    gradient_cfg = ForwardDiff.GradientConfig(jacobian_cfg, U2, ForwardDiff.Chunk(2))
-    return SchGaussianLocalMetricCFG(W, U1, U2, gradient_cfg, jacobian_cfg)
-end
-#=
     Computes ∂ₓ₁∂ₓ₂E(X1, X2)
 =#
-function schrodinger_gaussian_residual_local_metric!(::Type{Gtype}, Htr::AbstractMatrix{T}, a::T, b::T, Lt::Int, k::Int, l::Int,
-                apply_op, X1::AbstractVector{T}, X2::AbstractVector{T},
-                cfg=SchGaussianLocalMetricCFG(Gtype, Lt, X1, X2)) where{Gtype<:AbstractWavePacket, T<:Real}
+function schrodinger_gaussian_residual_local_metric(::Type{Gtype}, a::T, b::T, Lt::Int, k::Int, l::Int,
+                apply_op, X1::AbstractVector{T}, X2::AbstractVector{T}) where{Gtype<:AbstractWavePacket, T<:Real}
     psize = param_size(Gtype)
-    if size(Htr) != (psize, psize)
-        throw(DimensionMismatch("Htr must be a square matrix of size $(psize)x$(psize) but has size $(size(Htr))"))
-    end
     if length(X1) != Lt*psize
         throw(DimensionMismatch("X1 must be a vector of size $(Lt*psize) but has size $(length(X1))"))
     end
@@ -175,29 +130,27 @@ function schrodinger_gaussian_residual_local_metric!(::Type{Gtype}, Htr::Abstrac
     end
 
     h = (b-a)/(Lt-1)
-    t1 = a + k*h
-    t2 = a + l*h
-    cfg.U1 .= @view X1[(k-1)*psize + 1 : k*psize]
-    cfg.U2 .= @view X2[(l-1)*psize + 1 : l*psize]
+    tk = a + k*h
+    tl = a + l*h
+    U1k = SVector{psize}(@view X1[(k-1)*psize + 1 : k*psize])
+    U2l = SVector{psize}(@view X2[(l-1)*psize + 1 : l*psize])
 
-    function f(::Type{Gtype}, Y1, Y2) where Gtype
-        G1 = unpack_gaussian_parameters(Gtype, Y1)
-        G2 = unpack_gaussian_parameters(Gtype, Y2)
-        S = fe_k_factor(h, k, l) * real(dot_L2(G1, G2))
-        if k == 1 || k == Lt
-            S /= 2
-        end
-        return S
-    end
-    # function f(::Type{Gtype}, Y1, Y2) where Gtype
+    # function f(Y1, Y2)
     #     G1 = unpack_gaussian_parameters(Gtype, Y1)
-    #     HG1 = apply_op(t1, G1)
     #     G2 = unpack_gaussian_parameters(Gtype, Y2)
-    #     HG2 = apply_op(t2, G2)
-    #     return real(schrodinger_gaussian_cross_residual(h, Lt, k, l, G1, G2, HG1, HG2))
+    #     S = fe_k_factor(h, k, l) * real(dot_L2(G1, G2))
+    #     if k == 1 || k == Lt
+    #         S /= 2
+    #     end
+    #     return S
     # end
-    ∇₁f!(∇, Y1, Y2) = ForwardDiff.gradient!(∇, Z -> f(Gtype, Z, Y2), Y1, cfg.gradient_cfg, Val(false))
-    ForwardDiff.jacobian!(Htr, (∇, Z) -> ∇₁f!(∇, cfg.U1, Z), cfg.W, 
-        cfg.U2, cfg.jacobian_cfg, Val(false))
-    return Htr
+    function f(Y1, Y2)
+        G1 = unpack_gaussian_parameters(Gtype, Y1)
+        HG1 = apply_op(tk, G1)
+        G2 = unpack_gaussian_parameters(Gtype, Y2)
+        HG2 = apply_op(tl, G2)
+        return real(schrodinger_gaussian_cross_residual(h, Lt, k, l, G1, G2, HG1, HG2))
+    end
+    ∇₁f(Y1, Y2) = ForwardDiff.gradient(Z -> f(Z, Y2), Y1)
+    return ForwardDiff.jacobian(Z -> ∇₁f(U1k, Z), U2l)
 end

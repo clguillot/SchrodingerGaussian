@@ -14,7 +14,6 @@ using ForwardDiff
 using DiffResults
 
 using HermiteWavePackets
-
 using ProgressBars
 
 #=
