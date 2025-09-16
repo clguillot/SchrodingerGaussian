@@ -17,7 +17,8 @@ include("reference_solution.jl")
 function plot_schrodinger2d_gaussian_timestep(pb::GreedyDiscretization{T}, nb_timesteps, G0::AbstractWavePacket{D}, V::AbstractWavePacket{D}; plot_result=true) where{T, D}
 
     function propag(t, G::AbstractWavePacket{D}) where D
-        return inv_fourier(unitary_product(fourier(G), SVector{D}(ntuple(_ -> 2*t, D)...)))
+        vt = 2*t * ones(SVector{D, Bool})
+        return inv_fourier(unitary_product(fourier(G), Diagonal(vt)))
     end
     function apply_op(t, G)
         return propag(-t, V * propag(t, G))
@@ -64,8 +65,8 @@ function plot_schrodinger2d_gaussian_timestep(pb::GreedyDiscretization{T}, nb_ti
     # display(p)
 end
 
-G0 = GaussianWavePacket(complex(1.0), SVector(complex(1.0), complex(1.0)), SVector(6.0, 0.0), SVector(-1.0, 0.0))
+G0 = GaussianWavePacket(complex(1.0), Diagonal(SVector(complex(1.0), complex(1.0))), SVector(6.0, 0.0), SVector(-1.0, 0.0))
 G0 = G0 / norm_L2(G0)
-pb = GreedyDiscretization(0., 10., 101, 20, 100, true)
-V = Gaussian(-5.0, SVector(0.5, 0.5), SVector(0.1, 0.0))
-plot_schrodinger2d_gaussian_timestep(pb, 10, G0, V)
+pb = GreedyDiscretization(0., 5., 201, 100, 200, true)
+V = Gaussian(-5.0, Diagonal(SVector(0.5, 0.5)), SVector(0.1, 0.0))
+plot_schrodinger2d_gaussian_timestep(pb, 1, G0, V)

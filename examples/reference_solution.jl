@@ -80,3 +80,52 @@ function schrodinger_sine(a::T, b::T, Lt::Int, u0, v, M::T, Lx::Int) where{T<:Ab
 
     return U
 end
+
+
+function strange_sine_interaction3d(Vfunc, u0func, M, N, dt, steps)
+
+    # Create physical grid in [-M, M]^3, excluding boundaries
+    x = range(-M, M, length=N+2)[2:end-1]  # size N
+    X = reshape(x, N, 1, 1)     # X(i,j,k) = x[i]
+    Y = reshape(x, 1, N, 1)     # Y(i,j,k) = y[j]
+    Z = reshape(x, 1, 1, N)     # Z(i,j,k) = z[k]
+    u = zeros(ComplexF64, N, N, N, steps+1)
+
+    # Evaluate initial condition and potential
+    (@view u[:, :, :, begin]) .= @. ComplexF64(u0func(X, Y, Z))
+    V = @. Vfunc(X, Y, Z)
+
+    # Laplacian eigenvalues
+    k = collect(1:N)
+    λ = @. (k * π / (2M))^2
+    Λ = reshape(λ, N, 1, 1) .+ reshape(λ, 1, N, 1) .+ reshape(λ, 1, 1, N)
+
+    #
+    eΔ = @. cis(-dt/2 * Λ)
+    eV = @. cis(-dt * V)
+
+    norm_factor = (2N+2)^3  # normalization for DST-I (RODFT00)
+
+    plan_tf = FFTW.plan_r2r!(u[:, :, :, begin], FFTW.RODFT00)
+
+    # Applies exp(itΔ) to u in sine basis
+    # v operates as a buffer
+    function exp_laplacian!(u)
+        plan_tf * u
+        @. u = eΔ * u / norm_factor
+        plan_tf * u
+        return u
+    end
+
+    # Order 2 splitting
+    for n in 1:steps
+        t = (n-1) * dt
+        u_n = @view u[:, :, :, n+1]
+        u_n .= @view u[:, :, :, n]
+        exp_laplacian!(u_n)
+        @. u_n *= eV
+        exp_laplacian!(u_n)
+    end
+
+    return u, X, Y, Z
+end

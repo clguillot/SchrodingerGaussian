@@ -20,11 +20,11 @@ function test_gaussian_multidim_approx()
     p3 = SVector(0.3, 0.4, 1.1)
 
     # Wave packets
-    G1 = GaussianWavePacket(λ1, z1, q1, p1)
-    G2 = GaussianWavePacket(λ2, z2, q2, p2)
-    G3 = GaussianWavePacket(λ3, z3, q3, p3)
+    G1 = GaussianWavePacket(λ1, Diagonal(z1), q1, p1)
+    G2 = GaussianWavePacket(λ2, Diagonal(z2), q2, p2)
+    G3 = GaussianWavePacket(λ3, Diagonal(z3), q3, p3)
 
-    Gtype = GaussianWavePacket{3, ComplexF64, ComplexF64, Float64, Float64}
+    Gtype = GaussianWavePacket{3, ComplexF64, ComplexF64, SDiagonal{3, ComplexF64}, Float64, Float64}
 
     # @descend gaussian_approx(Gtype, Float64, WavePacketSum(G1, G2, G3); rel_tol=1e-12, verbose=true)
     G_approx, res = gaussian_approx(Gtype, Float64, WavePacketSum(G1, G2, G3); rel_tol=1e-12, verbose=true)
