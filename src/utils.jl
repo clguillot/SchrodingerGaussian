@@ -62,22 +62,22 @@ end
 
 =#
 
-param_size(::Type{GaussianWavePacket{D, Complex{T}, Complex{T}, T, T}}) where{D, T} = 2 + 4*D
-param_size(::GaussianWavePacket{D, Complex{T}, Complex{T}, T, T}) where{D, T} = 2 + 4*D
+param_size(::Type{GaussianWavePacket{D, Complex{T}, Complex{T}, SDiagonal{D, Complex{T}}, T, T}}) where{D, T} = 2 + 4*D
+param_size(::GaussianWavePacket{D, Complex{T}, Complex{T}, SDiagonal{D, Complex{T}}, T, T}) where{D, T} = 2 + 4*D
 
 #=
     Packing a GaussianWavePacket into an AbstractVector
     The values are packed from index idx to idx + param_size(G)
 =#
-function pack_gaussian_parameters!(X::AbstractVector{T}, G::GaussianWavePacket{D, Complex{T}, Complex{T}, T, T}, idx::Int=firstindex(X)) where{D, T}
+function pack_gaussian_parameters!(X::AbstractVector{T}, G::GaussianWavePacket{D, Complex{T}, Complex{T}, SDiagonal{D, Complex{T}}, T, T}, idx::Int=firstindex(X)) where{D, T}
     # Coefficient
     X[idx] = real(G.λ)
     X[idx + 1] = imag(G.λ)
 
     # Complex phase
     for k in 1:D
-        X[idx + 2 + 2*(k-1)] = real(G.z[k])
-        X[idx + 3 + 2*(k-1)] = imag(G.z[k])
+        X[idx + 2 + 2*(k-1)] = real(G.z[k, k])
+        X[idx + 3 + 2*(k-1)] = imag(G.z[k, k])
     end
 
     @views X[idx + 2 + 2*D : idx + 1 + 3*D] .= G.q   # Translation
@@ -99,7 +99,7 @@ function unpack_gaussian_parameters(::Type{Gtype}, X::AbstractVector{T}, idx::In
     im_z = SVector{D}(@view X[idx + 3 : 2 : idx + 1 + 2*D])
     q = SVector{D}(@view X[idx + 2 + 2*D : idx + 1 + 3*D])
     p = SVector{D}(@view X[idx + 2 + 3*D : idx + 1 + 4*D])
-    return GaussianWavePacket(λ, complex.(re_z, im_z), q, p)
+    return GaussianWavePacket(λ, Diagonal(complex.(re_z, im_z)), q, p)
 end
 
 #=
@@ -108,5 +108,5 @@ end
 function unpack_gaussian_parameter_z(::Type{Gtype}, X::AbstractVector{T}, idx::Int=firstindex(X)) where{D, Gtype<:GaussianWavePacket{D}, T<:Real}
     re_z = SVector{D}(@view X[idx + 2 : 2 : idx + 2*D])
     im_z = SVector{D}(@view X[idx + 3 : 2 : idx + 1 + 2*D])
-    return complex.(re_z, im_z)
+    return Diagonal(complex.(re_z, im_z))
 end

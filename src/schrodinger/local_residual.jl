@@ -135,22 +135,22 @@ function schrodinger_gaussian_residual_local_metric(::Type{Gtype}, a::T, b::T, L
     U1k = SVector{psize}(@view X1[(k-1)*psize + 1 : k*psize])
     U2l = SVector{psize}(@view X2[(l-1)*psize + 1 : l*psize])
 
-    # function f(Y1, Y2)
-    #     G1 = unpack_gaussian_parameters(Gtype, Y1)
-    #     G2 = unpack_gaussian_parameters(Gtype, Y2)
-    #     S = fe_k_factor(h, k, l) * real(dot_L2(G1, G2))
-    #     if k == 1 || k == Lt
-    #         S /= 2
-    #     end
-    #     return S
-    # end
     function f(Y1, Y2)
         G1 = unpack_gaussian_parameters(Gtype, Y1)
-        HG1 = apply_op(tk, G1)
         G2 = unpack_gaussian_parameters(Gtype, Y2)
-        HG2 = apply_op(tl, G2)
-        return real(schrodinger_gaussian_cross_residual(h, Lt, k, l, G1, G2, HG1, HG2))
+        μ = fe_k_factor(h, k, l)
+        if k == l && (k == 1 || k == Lt)
+            μ /= 2
+        end
+        return μ * real(dot_L2(G1, G2))
     end
+    # function f(Y1, Y2)
+    #     G1 = unpack_gaussian_parameters(Gtype, Y1)
+    #     HG1 = apply_op(tk, G1)
+    #     G2 = unpack_gaussian_parameters(Gtype, Y2)
+    #     HG2 = apply_op(tl, G2)
+    #     return real(schrodinger_gaussian_cross_residual(h, Lt, k, l, G1, G2, HG1, HG2))
+    # end
     ∇₁f(Y1, Y2) = ForwardDiff.gradient(Z -> f(Z, Y2), Y1)
     return ForwardDiff.jacobian(Z -> ∇₁f(U1k, Z), U2l)
 end

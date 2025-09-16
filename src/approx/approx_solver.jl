@@ -59,8 +59,8 @@ function gaussian_approx(::Type{Gtype}, ::Type{T}, Ginit::AbstractWavePacket{D};
 
         # Creates a linesearch with an alphamax to avoid negative variance for the gaussians
         # More precisely, the real part of the variance cannot be more than halved
-        a = real.(unpack_gaussian_parameter_z(Gtype, X))
-        a_dir = real.(unpack_gaussian_parameter_z(Gtype, d))
+        a = real.(diag(unpack_gaussian_parameter_z(Gtype, X)))
+        a_dir = real.(diag(unpack_gaussian_parameter_z(Gtype, d)))
         alphamax = minimum(@. ifelse(a_dir < 0, -a / (2*a_dir), typemax(T)))
         ls = HagerZhang{T}(;alphamax=alphamax)
 

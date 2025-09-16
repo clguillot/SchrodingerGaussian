@@ -213,7 +213,7 @@ function schrodinger_gaussian_gradient_and_metric!(::Type{Gtype}, ∇::AbstractV
 
         # Metric
         for l=k:min(Lt,k+1)
-            Akl = schrodinger_gaussian_residual_local_metric(Gtype, a, b, Lt, k, l, apply_op, X, X)
+            Akl = (b-a) * schrodinger_gaussian_residual_local_metric(Gtype, a, b, Lt, k, l, apply_op, X, X)
             if k==l
                 @views A[Block(k, l)] .= Symmetric(Akl)
             else

@@ -12,7 +12,7 @@ function schrodinger_greedy_hermite(pb::GreedyDiscretization{T}, ::Type{N},
     greedy_orthogonal = pb.greedy_orthogonal
     verbose = verbose || fullverbose
 
-    Gtype = GaussianWavePacket{D, Complex{T}, Complex{T}, T, T}
+    Gtype = GaussianWavePacket{D, Complex{T}, Complex{T}, SDiagonal{D, Complex{T}}, T, T}
     L = prod(N.parameters)
     Htype = HermiteWavePacket{D, N, Complex{T}, Complex{T}, T, T, L}
     idN = SMatrix{L, L}(diagm(ones(SVector{L, T})))
@@ -135,7 +135,7 @@ function schrodinger_greedy_hermite_timestep(pb::GreedyDiscretization{T}, ::Type
     nb_iter = pb.nb_iter
     greedy_orthogonal = pb.greedy_orthogonal
 
-    Gtype = GaussianWavePacket{D,Complex{T},Complex{T},T,T}
+    Gtype = GaussianWavePacket{D, Complex{T}, Complex{T}, SDiagonal{D, Complex{T}}, T, T}
     L = prod(N.parameters)
     Htype = HermiteWavePacket{D, N, Complex{T}, Complex{T}, T, T, L}
 

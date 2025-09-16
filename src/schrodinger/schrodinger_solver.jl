@@ -31,8 +31,8 @@ function schrodinger_gaussian_linesearch(::Type{Gtype}, U::Vector{T}, ∇::Vecto
     # More precisely, the real part of the variance cannot be more than halved
     alphamax = typemax(T)
     for k in 1:Lt
-        re_z = real.(unpack_gaussian_parameter_z(Gtype, X, (k-1) * psize + 1))
-        re_z_dir = real.(unpack_gaussian_parameter_z(Gtype, d, (k-1) * psize + 1))
+        re_z = real.(diag(unpack_gaussian_parameter_z(Gtype, X, (k-1) * psize + 1)))
+        re_z_dir = real.(diag(unpack_gaussian_parameter_z(Gtype, d, (k-1) * psize + 1)))
         w = @. ifelse(re_z_dir < 0, -re_z / (2*re_z_dir), typemax(T))
         alphamax = min(alphamax, minimum(w))
     end
@@ -83,7 +83,7 @@ function schrodinger_best_gaussian(a::T, b::T, Lt::Int,
                                         abs_tol::T,
                                         cfg=SchBestGaussianCFG(Gtype, T, Lt);
                                         maxiter::Int = 1000, verbose::Bool=false) where{D, T<:AbstractFloat}
-    Gtype = GaussianWavePacket{D, Complex{T}, Complex{T}, T, T}
+    Gtype = GaussianWavePacket{D, Complex{T}, Complex{T}, SDiagonal{D, Complex{T}}, T, T}
     psize = param_size(Gtype)
 
     h = (b-a)/(Lt-1)

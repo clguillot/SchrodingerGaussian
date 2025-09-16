@@ -21,7 +21,7 @@ function schrodinger_greedy_gaussian(pb::GreedyDiscretization{T}, Ginit::Abstrac
     greedy_orthogonal = pb.greedy_orthogonal
     verbose = verbose || fullverbose
 
-    Gtype = GaussianWavePacket{D,Complex{T},Complex{T},T,T}
+    Gtype = GaussianWavePacket{D, Complex{T}, Complex{T}, SDiagonal{D, Complex{T}}, T, T}
     G0_ = zeros(Gtype, nb_terms)
 
     psize = param_size(Gtype)
@@ -128,7 +128,7 @@ function schrodinger_greedy_gaussian_timestep(pb::GreedyDiscretization{T}, nb_ti
     verbose = verbose || fullverbose
     nb_timesteps = min(nb_timesteps, Lt-1)
 
-    Gtype = GaussianWavePacket{D,Complex{T},Complex{T},T,T}
+    Gtype = GaussianWavePacket{D, Complex{T}, Complex{T}, SDiagonal{D, Complex{T}}, T, T}
     res = zero(T)
     G = zeros(Gtype, nb_terms, Lt)
     lt = fld(Lt-1, nb_timesteps)
@@ -143,7 +143,7 @@ function schrodinger_greedy_gaussian_timestep(pb::GreedyDiscretization{T}, nb_ti
         pb_loc = GreedyDiscretization(a_, b_, lt_, nb_terms, nb_iter, greedy_orthogonal)
         G_block, res_list = schrodinger_greedy_gaussian(pb_loc, G0_, apply_op; verbose, fullverbose)
         @views G[:, k1:k2] .= G_block
-        res += sqrt(res_list[end])
+        res += sqrt(max(res_list[end], 0))
     end
 
     return G, res

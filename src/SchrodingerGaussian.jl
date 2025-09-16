@@ -14,6 +14,9 @@ using ForwardDiff
 using DiffResults
 
 using HermiteWavePackets
+using FiniteDifferences
+using GenericLinearAlgebra
+using DoubleFloats
 using ProgressBars
 
 #=
